@@ -94,6 +94,7 @@ When you think a pillar doesn't apply, check here FIRST:
 | "I'll clean up later" | Boy Scout Rule: leave it better NOW. Zero dangling code (9). |
 | "This package works fine" | Is it maintained? Superseded? Search before installing (10). |
 | "API key is simpler" | No rotation, no scoping, no revocation. Use OAuth 2.1 + PKCE (7). |
+| "Let me write a plan first" | Plan/design doc already provided? SKIP planning, START implementing. Read the spec. (1). |
 
 ---
 
@@ -101,6 +102,19 @@ When you think a pillar doesn't apply, check here FIRST:
 
 **Non-negotiable:** No code without a plan. No ✅ without tool-verified evidence.
 **Superpowers:** `brainstorming` → `writing-plans` for full workflow.
+
+### Plan Already Exists? Skip to Execution.
+
+If user provides a design doc, plan file, or says "implement X":
+1. **READ the existing plan** — don't re-brainstorm or re-plan.
+2. **VERIFY it's actionable** — has goal, approach, file list? If yes → execute.
+3. **GO DIRECTLY to step 4+ in Unified Workflow** (TDD/implement, not brainstorm/plan).
+
+**Do NOT re-plan what's already planned.** User saying "implement" = "execute this spec NOW."
+Loading `superpowers:writing-plans` when a plan exists is wasted work. Load
+`superpowers:subagent-driven-development` instead and start dispatching tasks.
+
+### No Plan Exists? Create One First.
 
 ```
 BRAINSTORM → Problem? Why? Constraints? Trade-offs? Edge cases?
@@ -431,12 +445,16 @@ Current description: ~950 chars. Monitor when adding new skills.
 
 # Unified Workflow
 
+**ENTRY POINT:** If plan/design doc already exists → START AT STEP 3 or 4.
+Do NOT repeat steps 1-2 when user says "implement" with an existing spec.
+
 ```
  1. BRAINSTORM (1)      → superpowers:brainstorming OR manual plan
  2. WRITE PLAN (1)      → superpowers:writing-plans OR .claude/plans/<n>.md
+    ─── SKIP 1-2 IF PLAN/DESIGN DOC ALREADY EXISTS ───
  3. RESEARCH DEPS (10)  → web_search latest version, web_fetch docs
  4. FAILING TEST (5)    → superpowers:tdd RED phase. Script verifies test exists.
- 5. IMPLEMENT (2)       → superpowers:tdd GREEN phase. SOLID + defensive.
+ 5. IMPLEMENT (2)       → superpowers:subagent-driven-development. SOLID + defensive.
  6. REFACTOR (2+5)      → superpowers:tdd REFACTOR. PostToolUse lint runs.
  7. SECURE (4)          → Script scans secrets. Manual auth/input review.
  8. SYNC ENV (3)        → Script detects env vars. Manual surface sync.
