@@ -5,7 +5,7 @@ description: >
   Use PROACTIVELY before any production code. AAA pattern, anti-pattern detection, ≥80% coverage.
   MUST BE USED for Pillar 5 (Test-Driven Integrity) enforcement.
 tools: Read, Write, Bash, Grep, Glob
-model: sonnet, haiku
+model: sonnet
 skills: develop-like-sudipta
 ---
 

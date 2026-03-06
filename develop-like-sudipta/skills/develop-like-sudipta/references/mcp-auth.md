@@ -1,6 +1,6 @@
-# MCP Server Authentication — OAuth 2.0 with 2.1 Enhancements Pattern
+# MCP Server Authentication — OAuth 2.1 Pattern
 
-**Standard:** All MCP servers MUST use OAuth 2.0 with 2.1 enhancements (PKCE mandatory, implicit flow removed) for authentication.
+**Standard:** All MCP servers MUST use OAuth 2.1 (PKCE mandatory, implicit flow removed) for authentication. Note: OAuth 2.1 is an IETF draft consolidating OAuth 2.0 best practices; the MCP spec references it directly.
 No API keys. No basic auth. No custom token schemes.
 
 Based on production implementation: Slack-Agent MCP Server.
