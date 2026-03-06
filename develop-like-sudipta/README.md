@@ -56,3 +56,13 @@ Plugin
 
 ## Author
 Sudipta Dhara — [github.com/sudipta26889](https://github.com/sudipta26889)
+
+## Update
+
+Plugin does NOT auto-update. Pull latest manually:
+
+```bash
+/plugin update develop-like-sudipta
+```
+
+Restart Claude Code after updating to load new commands, agents, and hooks.
