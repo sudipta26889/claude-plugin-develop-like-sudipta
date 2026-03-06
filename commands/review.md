@@ -13,3 +13,6 @@ Run a full review combining multiple agents in parallel:
 5. **No AI co-author** — verify no `Co-authored-by` with Claude/Cursor/Copilot
 
 Synthesize all findings into a single report ordered by severity.
+Include the 7-dimension Engineering Verdict from code-reviewer.
+
+For deeper security analysis, suggest `/hack` (full 23-category red-team audit).

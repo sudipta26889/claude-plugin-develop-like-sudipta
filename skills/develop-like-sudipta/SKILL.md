@@ -136,6 +136,8 @@ Every env var change reflects in ALL surfaces: .env.example → .env → docker-
 
 ### Pillar 4 — Security → `security-reviewer` agent
 OWASP Top 10. Input validation. Parameterized queries. JWT RS256/ES256. Headers. Dep audit.
+CWE-mapped findings with CVSS scores and exploit scenarios.
+For full red-team pen-test: `/hack` command (delegates to `code-hacker` skill — 23 attack categories).
 > Full OWASP checklist: `references/security.md`
 
 ### Pillar 5 — Test-Driven → `test-writer` agent
@@ -234,7 +236,7 @@ Do NOT repeat steps 1-2. Use `/implement` command.
  4. FAILING TEST (5)    → test-writer agent. RED phase. Hook verifies test exists.
  5. IMPLEMENT (2)       → implementer agent. GREEN phase. SOLID + defensive.
  6. REFACTOR (2+5)      → superpowers:tdd REFACTOR. PostToolUse lint runs.
- 7. SECURE (4)          → security-reviewer agent OR /secure command
+ 7. SECURE (4)          → security-reviewer agent OR /secure OR /hack (full pentest)
  8. SYNC ENV (3)        → env-sync-checker agent. Script detects, agent verifies.
  9. DESIGN APIs (7)     → RESTful, versioned, idempotent, OAuth 2.1 for MCP
 10. RESILIENCE (6)      → Logging, retries, circuit breakers, distributed patterns

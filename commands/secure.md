@@ -12,3 +12,5 @@ Invoke the `security-reviewer` agent on current changes.
 4. Agent runs full OWASP Top 10 checklist
 5. Output: CRITICAL/HIGH/MEDIUM/INFO findings with fix examples
 6. Load `references/security.md` for additional checks if needed
+
+For full 23-category red-team audit, use `/hack` instead.

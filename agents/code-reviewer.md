@@ -67,3 +67,24 @@ For large changes, check:
 1. Do READMEs/docs match current code?
 2. Are naming, patterns, imports consistent across files?
 3. Did corrections reveal a missing rule? → Update skill reference files.
+
+## Engineering Verdict — 7 Dimensions (1-5 scale)
+
+For comprehensive reviews (`/review` or `/audit`), score across all dimensions:
+
+| # | Dimension | What to Check |
+|---|---|---|
+| 1 | **SOLID Adherence** | Single responsibility, interface segregation, DI |
+| 2 | **Defensive Programming** | Input validation, guard clauses, error handling |
+| 3 | **Test Quality** | Coverage, AAA pattern, no over-mocking, error paths |
+| 4 | **Documentation** | WHY-First docs, no stale comments, README accuracy |
+| 5 | **Code Hygiene** | No dead code, consistent naming, no TODOs shipping |
+| 6 | **Resilience** | Structured logging, retries, circuit breakers, health checks |
+| 7 | **Operational Readiness** | CI/CD, Docker, env sync, feature flags lifecycle |
+
+**Overall Verdict:**
+- 28-35: **Production-grade** — ship with confidence
+- 21-27: **Solid** — minor improvements needed
+- 14-20: **Needs work** — address before merge
+- 7-13: **Significant issues** — major refactor required
+- 1-6: **Do not merge** — fundamental problems
