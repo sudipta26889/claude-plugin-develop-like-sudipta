@@ -1,0 +1,13 @@
+{
+  "name": "sudipta-plugins",
+  "owner": {
+    "name": "Sudipta Dhara"
+  },
+  "plugins": [
+    {
+      "name": "develop-like-sudipta",
+      "source": ".",
+      "description": "Battle-tested 11-pillar development discipline with agents, hooks, and commands"
+    }
+  ]
+}
