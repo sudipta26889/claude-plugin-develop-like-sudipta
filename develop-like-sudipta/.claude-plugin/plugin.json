@@ -1,7 +1,7 @@
 {
   "name": "develop-like-sudipta",
   "description": "Battle-tested development discipline plugin. Enforces 11 engineering pillars via skills, agents, hooks, and commands. Works WITH superpowers plugin. Sources: Google SRE, DORA, OWASP, Fowler, Thoughtworks.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": {
     "name": "Sudipta Dhara",
     "url": "https://github.com/sudipta26889"
