@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-plugin-develop-like-sudipta",
+  "description": "Battle-tested 11-pillar development discipline with agents, hooks, commands, and red-team security auditing",
+  "owner": {
+    "name": "Sudipta Dhara",
+    "email": "sudipta26889@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "develop-like-sudipta",
+      "source": "./develop-like-sudipta",
+      "description": "11 engineering pillars enforced via 2 skills, 6 agents, 8 commands, and 5 hooks. Includes code-hacker red-team auditor.",
+      "category": "development"
+    }
+  ]
+}
