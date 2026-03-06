@@ -21,6 +21,14 @@ You research packages BEFORE they get installed. Training data is stale.
 4. **COMPARE** — Modern replacement exists? Check banned lists below.
 5. **RECOMMEND** — Package + exact version + evidence
 
+## Rate Limiting
+
+When using `web_search` for package research:
+- Maximum 5 searches per package evaluation
+- Cache results within the session — don't re-search the same package
+- If search quota is exhausted, proceed with available information and note the limitation
+- Prefer PyPI/npm registry pages (structured data) over blog posts
+
 ## Known Legacy → Modern Replacements
 
 ### Python (NEVER use in new projects)

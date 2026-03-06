@@ -51,6 +51,11 @@ FIX → By priority. Tests pass between waves.
 RE-AUDIT → Findings > 0? Repeat. Findings = 0? Done.
 ```
 
+**Termination conditions:**
+- Maximum 3 audit-fix iterations per review session
+- If findings persist after 3 rounds, escalate remaining items as tech debt tickets
+- Each round must reduce total findings — if not, stop and report blockers
+
 ## Output Format
 
 Organize findings by priority:
@@ -60,6 +65,14 @@ Organize findings by priority:
 - **P3 Low** (nice to have)
 
 Include specific fix examples for P0 and P1.
+
+**Severity Mapping (cross-agent alignment):**
+| Code Review | Security Review | Meaning |
+|------------|----------------|---------|
+| P0 Critical | CVSS 9.0-10.0 | Must fix before merge |
+| P1 High | CVSS 7.0-8.9 | Should fix, realistic risk |
+| P2 Medium | CVSS 4.0-6.9 | Consider improving |
+| P3 Low | CVSS 0.1-3.9 | Nice to have |
 
 ## End-of-Session Review (>5 files changed)
 

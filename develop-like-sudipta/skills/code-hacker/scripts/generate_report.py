@@ -4,20 +4,15 @@
 Generates a structured Markdown breach report from scan results.
 """
 import json
+import os
 import sys
 from datetime import datetime
+from pathlib import Path
 from collections import defaultdict
 
-SEVERITY_ICONS = {
-    "CRITICAL": "💣", "HIGH": "🔴", "MEDIUM": "🟠", "LOW": "🟡", "INFO": "🔵"
-}
-SEVERITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
-
-CATEGORIES = [
-    'RECON', 'INJECTION', 'AUTH', 'AUTHZ', 'SECRETS', 'CRYPTO', 'INPUT',
-    'API', 'DESER', 'SUPPLY', 'CONFIG', 'SSRF', 'FILE', 'XSS', 'ARCH',
-    'CONCUR', 'LOGGING', 'CONTAINER', 'AI', 'PERF', 'PROTO', 'QUALITY'
-]
+sys.path.insert(0, str(Path(__file__).parent))
+from constants import SEVERITY_LEVELS as SEVERITY_ORDER_TUPLE, SEVERITY_ICONS, CATEGORIES
+SEVERITY_ORDER = list(SEVERITY_ORDER_TUPLE)
 
 def generate_report(results_path: str, output_path: str = "report.md"):
     try:
@@ -25,6 +20,12 @@ def generate_report(results_path: str, output_path: str = "report.md"):
             data = json.load(f)
     except Exception as e:
         print(f"Error loading results: {e}")
+        sys.exit(1)
+
+    # Validate output path
+    out_dir = os.path.dirname(os.path.abspath(output_path))
+    if not os.path.isdir(out_dir):
+        print(f"Error: output directory does not exist: {out_dir}", file=sys.stderr)
         sys.exit(1)
 
     summary = data.get("summary", {})

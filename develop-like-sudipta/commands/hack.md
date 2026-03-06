@@ -13,6 +13,8 @@ security audit. This is the HEAVY option — use `/secure` for lightweight revie
 ## Procedure
 
 1. **Verify code-hacker skill is available** — check `skills/code-hacker/SKILL.md` exists
+   - Verify by checking file exists AND is readable: `test -r skills/code-hacker/SKILL.md`
+   - If skill is missing or unreadable, output: "[HACK] ❌ code-hacker skill not found. Install the develop-like-sudipta plugin first."
 2. **Load the code-hacker skill** — follow its execution protocol exactly
 3. **Run all 6 phases:**
    - Phase 0: Setup & Reconnaissance (attack surface mapping)

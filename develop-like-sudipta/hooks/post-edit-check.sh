@@ -8,6 +8,12 @@
 
 set -euo pipefail
 
+# Early dependency check
+if ! command -v python3 &>/dev/null; then
+  echo "{\"additionalContext\": \"[POST-EDIT] python3 is required but not found. Install Python 3.8+ first.\"}"
+  exit 0
+fi
+
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | python3 -c "
 import json, sys
@@ -27,8 +33,9 @@ fi
 
 # --- 2. SECRET SCANNING (Pillar 4) ---
 # Patterns that suggest hardcoded secrets
-SECRET_PATTERNS='(password\s*=\s*["\x27][^"\x27]+|api_key\s*=\s*["\x27][^"\x27]+|secret\s*=\s*["\x27][^"\x27]+|token\s*=\s*["\x27](?!{)[^"\x27]+|AWS_SECRET|PRIVATE_KEY\s*=\s*["\x27])'
-if grep -qPi "$SECRET_PATTERNS" "$FILE_PATH" 2>/dev/null; then
+# Using POSIX extended regex instead of Perl for portability
+SECRET_PATTERNS='(password[[:space:]]*=[[:space:]]*[\"\x27][^\"\x27]+|api_key[[:space:]]*=[[:space:]]*[\"\x27][^\"\x27]+|secret[[:space:]]*=[[:space:]]*[\"\x27][^\"\x27]+|token[[:space:]]*=[[:space:]]*[\"\x27]([^{])[^\"\x27]+|AWS_SECRET|PRIVATE_KEY[[:space:]]*=[[:space:]]*[\"\x27])'
+if grep -qEi "$SECRET_PATTERNS" "$FILE_PATH" 2>/dev/null; then
   # Exclude test files and .env.example (which may have placeholder values)
   case "$FILE_PATH" in
     *test*|*.env.example|*.env.sample) ;;
@@ -74,6 +81,10 @@ fi
 # Output warnings as additionalContext if any found
 if [ -n "$WARNINGS" ]; then
   # Escape for JSON
-  ESCAPED=$(echo "$WARNINGS" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo "\"$WARNINGS\"")
+  ESCAPED=$(echo "$WARNINGS" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read().strip()))")
+  if [ $? -ne 0 ]; then
+    echo "{\"additionalContext\": \"[POST-EDIT] Warnings detected but could not be JSON-encoded. Ensure python3 is available.\"}"
+    exit 0
+  fi
   echo "{\"additionalContext\": ${ESCAPED}}"
 fi

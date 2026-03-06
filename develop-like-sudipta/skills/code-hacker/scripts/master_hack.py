@@ -1,43 +1,27 @@
 #!/usr/bin/env python3
 """
 ☠️ CODE HACKER — Master Orchestrator
-Runs all 22 scan modules in parallel, collects results, outputs JSON.
+Runs all 23 scan modules in parallel, collects results, outputs JSON.
 """
 import json
+import logging
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
-from datetime import datetime
+from urllib.parse import urlparse
 
 SCRIPT_DIR = Path(__file__).parent
-CATEGORIES = [
-    ("01_recon.sh", "RECON"),
-    ("02_injection.sh", "INJECTION"),
-    ("03_auth.sh", "AUTH"),
-    ("04_authz.sh", "AUTHZ"),
-    ("05_secrets.sh", "SECRETS"),
-    ("06_crypto.sh", "CRYPTO"),
-    ("07_input.sh", "INPUT"),
-    ("08_api.sh", "API"),
-    ("09_deser.sh", "DESER"),
-    ("10_supply.sh", "SUPPLY"),
-    ("11_config.sh", "CONFIG"),
-    ("12_ssrf.sh", "SSRF"),
-    ("13_file.sh", "FILE"),
-    ("14_xss.sh", "XSS"),
-    ("15_arch.sh", "ARCH"),
-    ("16_concur.sh", "CONCUR"),
-    ("17_logging.sh", "LOGGING"),
-    ("18_container.sh", "CONTAINER"),
-    ("19_ai.sh", "AI"),
-    ("20_perf.sh", "PERF"),
-    ("21_proto.sh", "PROTO"),
-    ("22_quality.sh", "QUALITY"),
-    ("23_dast_fuzz.sh", "DAST"),
-]
+sys.path.insert(0, str(SCRIPT_DIR))
+from constants import SCRIPT_MAP as CATEGORIES, SEVERITY_LEVELS, BLOCKED_HOSTS, MAX_PARALLEL, MIN_PARALLEL, MAX_TIMEOUT, MIN_TIMEOUT, MAX_FINDINGS
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("code-hacker")
+
 
 def run_script(script_name: str, category: str, target: str, live_url: str = None, timeout: int = 300) -> dict:
     """Run a single scan script and return results."""
@@ -72,14 +56,10 @@ def run_script(script_name: str, category: str, target: str, live_url: str = Non
                 finding.setdefault("category", category)
                 findings.append(finding)
             except json.JSONDecodeError:
-                if ":" in line and any(sev in line.upper() for sev in
-                    ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]):
-                    findings.append({
-                        "category": category,
-                        "severity": "INFO",
-                        "title": line,
-                        "raw": True,
-                    })
+                # Only accept lines that look like structured findings
+                line_stripped = line.strip()
+                if line_stripped and not line_stripped.startswith(("#", "//", "[", "=")):
+                    logger.warning("Non-JSON output from %s: %s", category, line_stripped[:100])
         return {
             "category": category,
             "status": "OK" if result.returncode == 0 else "ERROR",
@@ -116,16 +96,48 @@ def main():
     parser.add_argument("--timeout", "-t", type=int, default=300, help="Per-script timeout (seconds)")
     args = parser.parse_args()
 
+    # --- Input Validation ---
     target = os.path.realpath(args.target)
     if not os.path.exists(target):
-        print(f"❌ Target not found: {target}", file=sys.stderr)
+        logger.error("Target not found: %s", target)
+        sys.exit(1)
+    if not os.path.isdir(target):
+        logger.error("Target must be a directory: %s", target)
+        sys.exit(1)
+    if os.path.islink(args.target):
+        logger.error("Target cannot be a symlink (resolved to: %s)", target)
         sys.exit(1)
 
-    print(f"☠️ CODE HACKER — Scanning {target}")
-    print(f"⚙️ Parallel: {args.parallel} | Timeout: {args.timeout}s | Categories: {len(CATEGORIES)}")
+    # Validate --parallel and --timeout bounds
+    if not (MIN_PARALLEL <= args.parallel <= MAX_PARALLEL):
+        logger.error("--parallel must be %d-%d (got %d)", MIN_PARALLEL, MAX_PARALLEL, args.parallel)
+        sys.exit(1)
+    if not (MIN_TIMEOUT <= args.timeout <= MAX_TIMEOUT):
+        logger.error("--timeout must be %d-%d seconds (got %d)", MIN_TIMEOUT, MAX_TIMEOUT, args.timeout)
+        sys.exit(1)
+
+    # Validate --live-url (SSRF prevention)
+    live_url = args.live_url
+    if live_url:
+        try:
+            parsed = urlparse(live_url)
+            if parsed.scheme not in ("http", "https"):
+                logger.error("--live-url must use http/https scheme")
+                sys.exit(1)
+            if parsed.hostname and parsed.hostname.lower() in BLOCKED_HOSTS:
+                logger.error("--live-url points to blocked internal address: %s", parsed.hostname)
+                sys.exit(1)
+        except Exception as e:
+            logger.error("Invalid --live-url: %s", e)
+            sys.exit(1)
+
+    logger.info("☠️ CODE HACKER — Scanning %s", target)
+    logger.info("⚙️ Parallel: %d | Timeout: %ds | Categories: %d", args.parallel, args.timeout, len(CATEGORIES))
 
     all_results = []
     start_time = time.monotonic()
+    completed = 0
+    total = len(CATEGORIES)
 
     with ThreadPoolExecutor(max_workers=args.parallel) as executor:
         futures = {
@@ -133,12 +145,13 @@ def main():
             for script, cat in CATEGORIES
         }
         for future in as_completed(futures):
+            completed += 1
             cat = futures[future]
             result = future.result()
             status_icon = {"OK": "✅", "ERROR": "❌", "TIMEOUT": "⏱️",
                           "MISSING": "⚠️", "EXCEPTION": "💥"}.get(result["status"], "❓")
             count = len(result["findings"])
-            print(f"  {status_icon} {cat:12s} — {count} findings ({result['duration_ms']}ms)")
+            logger.info("  [%d/%d] %s %s — %d findings (%dms)", completed, total, status_icon, cat, count, result['duration_ms'])
             all_results.append(result)
 
     total_time = int((time.monotonic() - start_time) * 1000)
@@ -161,7 +174,13 @@ def main():
                         "error": r.get("error")})
 
     output = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "scan_metadata": {
+            "python_version": sys.version,
+            "platform": sys.platform,
+            "arguments": vars(args),
+            "script_dir": str(SCRIPT_DIR),
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "target": target,
         "total_findings": len(all_findings),
         "total_duration_ms": total_time,
@@ -178,14 +197,24 @@ def main():
         "script_results": all_results,
     }
 
-    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
-    with open(args.output, "w") as f:
-        json.dump(output, f, indent=2, default=str)
+    # Atomic write — write to temp file then rename
+    out_dir = os.path.dirname(args.output) or "."
+    os.makedirs(out_dir, exist_ok=True)
+    try:
+        fd, tmp_path = tempfile.mkstemp(dir=out_dir, suffix=".json.tmp")
+        with os.fdopen(fd, "w") as f:
+            json.dump(output, f, indent=2, default=str)
+        os.replace(tmp_path, args.output)
+    except Exception as e:
+        logger.error("Failed to write results: %s", e)
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        sys.exit(1)
 
-    print(f"\n☠️ SCAN COMPLETE in {total_time}ms")
-    print(f"📊 Findings: {output['summary']}")
-    print(f"⚠️ Gaps requiring agent audit: {len(gaps)}")
-    print(f"📄 Results: {args.output}")
+    logger.info("\n☠️ SCAN COMPLETE in %dms", total_time)
+    logger.info("📊 Findings: %s", output['summary'])
+    logger.info("⚠️ Gaps requiring agent audit: %d", len(gaps))
+    logger.info("📄 Results: %s", args.output)
 
 if __name__ == "__main__":
     main()

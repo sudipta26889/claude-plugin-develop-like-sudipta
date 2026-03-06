@@ -7,7 +7,10 @@ set -euo pipefail
 
 GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$HOME")
 PLANS_DIR="$GIT_ROOT/.claude/plans"
-mkdir -p "$PLANS_DIR"
+if ! mkdir -p "$PLANS_DIR" 2>/dev/null; then
+  echo "{\"additionalContext\": \"[STATE SAVER] Cannot create plans directory at $PLANS_DIR. Check permissions.\"}"
+  exit 0
+fi
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 STATE_FILE="$PLANS_DIR/auto-save-${TIMESTAMP}.md"
@@ -37,7 +40,7 @@ STATE_FILE="$PLANS_DIR/auto-save-${TIMESTAMP}.md"
   fi
 
   # Existing plan files
-  if ls "$PLANS_DIR"/*.md &>/dev/null 2>&1; then
+  if ls "$PLANS_DIR"/*.md &>/dev/null; then
     echo "## Active Plans"
     for plan in "$PLANS_DIR"/*.md; do
       [ "$plan" = "$STATE_FILE" ] && continue

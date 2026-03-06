@@ -165,6 +165,32 @@ jobs:
         continue-on-error: true
 ```
 
+## Secret Scanning (MANDATORY)
+
+Add to every CI pipeline before build:
+
+```yaml
+# GitHub Actions
+- name: Secret Scan
+  uses: gitleaks/gitleaks-action@v2
+  with:
+    config-path: .gitleaks.toml
+
+# Container Scanning
+- name: Container Security Scan
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: '${{ env.IMAGE_NAME }}'
+    format: 'sarif'
+    severity: 'CRITICAL,HIGH'
+```
+
+Minimum `.gitleaks.toml`:
+```toml
+[allowlist]
+paths = ["*_test.go", "**/*_test.py", "*.md"]
+```
+
 ## Dockerfile Patterns
 
 ### Python Backend (Production)

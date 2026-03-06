@@ -21,6 +21,22 @@ You write MINIMUM production code to make failing tests pass. GREEN phase of TDD
 4. Run tests to verify GREEN
 5. Refactor while keeping tests GREEN
 
+## Prerequisites Check (MUST verify before starting)
+
+Before writing any code, verify:
+1. **Plan exists** — Check `.claude/plans/` or user-provided design doc. If missing: STOP and request planning first.
+2. **Tests exist and FAIL** — Run `pytest` / `vitest`. If no test file exists for the target module: STOP and request test-writer agent first.
+3. **Dependencies resolved** — Check if new packages are needed. If yes: delegate to dep-researcher agent first.
+
+**If any prerequisite is missing, output:**
+```
+[IMPLEMENTER] ❌ Cannot proceed — missing prerequisite:
+- [ ] Plan/design doc: {present|MISSING}
+- [ ] Failing tests: {present|MISSING}
+- [ ] Dependencies: {resolved|NEEDS RESEARCH}
+Action: {specific next step}
+```
+
 ## SOLID Checklist (Before Writing ANY Code)
 
 1. **Single responsibility** — describe in one sentence without "and"?

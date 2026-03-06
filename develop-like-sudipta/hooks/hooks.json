@@ -1,4 +1,5 @@
 {
+  "_paths_note": "Paths below assume default install location (~/.claude/skills/develop-like-sudipta/hooks/). Run hooks/setup.sh to auto-update paths for your actual installation.",
   "hooks": {
     "PreToolUse": [
       {

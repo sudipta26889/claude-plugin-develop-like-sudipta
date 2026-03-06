@@ -4,7 +4,13 @@
 
 set -euo pipefail
 
-HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Early dependency check
+if ! command -v python3 &>/dev/null; then
+  echo "❌ FATAL: python3 is required but not found. Install Python 3.8+ first."
+  exit 1
+fi
+
+HOOKS_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")" && pwd)"
 SKILL_DIR="$(dirname "$HOOKS_DIR")"
 
 echo "=== develop-like-sudipta Hook Setup ==="
@@ -12,6 +18,15 @@ echo "=== develop-like-sudipta Hook Setup ==="
 # 1. Make all hook scripts executable
 chmod +x "$HOOKS_DIR"/*.sh
 echo "✅ Hook scripts made executable"
+
+# 1b. Auto-fix hook paths to actual install location
+HOOKS_JSON="$HOOKS_DIR/hooks.json"
+DEFAULT_PATH="~/.claude/skills/develop-like-sudipta/hooks"
+if [ -f "$HOOKS_JSON" ] && grep -q "$DEFAULT_PATH" "$HOOKS_JSON" 2>/dev/null; then
+  sed -i.bak "s|$DEFAULT_PATH|$HOOKS_DIR|g" "$HOOKS_JSON"
+  rm -f "${HOOKS_JSON}.bak"
+  echo "✅ Hook paths updated to: $HOOKS_DIR"
+fi
 
 # 2. Check if superpowers is installed
 if [ -d "$HOME/.claude/plugins" ]; then

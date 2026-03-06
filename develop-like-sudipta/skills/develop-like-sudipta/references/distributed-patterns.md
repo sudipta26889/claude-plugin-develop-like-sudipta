@@ -359,6 +359,18 @@ else:
 - Flag not touched in >90 days → mandatory removal
 - Cleanup PR: remove flag checks, remove else branches, remove flag definition
 
+#### Feature Flag Removal Checklist
+
+When removing a feature flag after full rollout:
+1. **Verify 100% rollout** — confirm flag is ON for all cohorts for ≥7 days
+2. **Search codebase** — `rg "FLAG_NAME"` to find all references
+3. **Remove flag evaluation** — replace `if flag_enabled("X")` with the enabled branch
+4. **Remove dead branch** — delete the disabled code path
+5. **Remove flag definition** — delete from flag config/database
+6. **Update tests** — remove flag-conditional test cases
+7. **Deploy and verify** — ensure no regressions
+8. **Document** — note removal in changelog
+
 ---
 
 ## Decision Matrix — When to Use What

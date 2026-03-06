@@ -1,6 +1,6 @@
-# MCP Server Authentication — OAuth 2.1 Pattern
+# MCP Server Authentication — OAuth 2.0 with 2.1 Enhancements Pattern
 
-**Standard:** All MCP servers MUST use OAuth 2.1 with PKCE for authentication.
+**Standard:** All MCP servers MUST use OAuth 2.0 with 2.1 enhancements (PKCE mandatory, implicit flow removed) for authentication.
 No API keys. No basic auth. No custom token schemes.
 
 Based on production implementation: Slack-Agent MCP Server.
@@ -41,6 +41,8 @@ Client                    MCP Server                     Auth Server (same app)
 ## Required Endpoints (7 total)
 
 ### 1. Discovery — RFC 8414 + RFC 9728
+
+> **HTTPS REQUIRED:** All OAuth endpoints (authorization, token, discovery) MUST use HTTPS in production. HTTP is acceptable only in local development with explicit `--insecure` flag.
 
 ```python
 # /.well-known/oauth-authorization-server
@@ -143,6 +145,12 @@ def verify_code_challenge(verifier: str, challenge: str, method: str = "S256") -
     expected = generate_code_challenge(verifier, method)
     return secrets.compare_digest(expected, challenge)  # MUST be timing-safe
 ```
+
+**PKCE rejection logic:**
+If `code_verifier` is missing or `SHA256(code_verifier) != code_challenge`:
+- Return HTTP 400 with `{"error": "invalid_grant", "error_description": "PKCE verification failed"}`
+- Log the attempt with client_id and timestamp
+- Do NOT reveal whether the code_challenge was found or not (prevents enumeration)
 
 ### 5. Token Endpoint — Exchange + Rotation
 

@@ -20,7 +20,7 @@ if [ -d "$GIT_ROOT/tests" ] || [ -d "$GIT_ROOT/test" ]; then
   if command -v pytest &>/dev/null; then
     TEST_RESULT=$(cd "$GIT_ROOT" && pytest --tb=no --no-header -q 2>&1 || true)
     if echo "$TEST_RESULT" | grep -q "FAILED\|ERROR"; then
-      FAIL_COUNT=$(echo "$TEST_RESULT" | grep -oP '\d+ failed' || echo "some")
+      FAIL_COUNT=$(echo "$TEST_RESULT" | grep -oE '[0-9]+ failed' || echo "some")
       WARNINGS="${WARNINGS}[COMPLETION GATE] ⚠️ Tests FAILING (${FAIL_COUNT}). Cannot claim done with broken tests. "
     fi
   fi
@@ -29,11 +29,11 @@ fi
 # Node: check if package.json has test script
 if [ -f "$GIT_ROOT/package.json" ]; then
   HAS_TEST=$(python3 -c "
-import json
-with open('$GIT_ROOT/package.json') as f:
+import json, sys
+with open(sys.argv[1]) as f:
     d = json.load(f)
     print('yes' if 'test' in d.get('scripts', {}) else 'no')
-" 2>/dev/null || echo "no")
+" "$GIT_ROOT/package.json" 2>/dev/null || echo "no")
   if [ "$HAS_TEST" = "yes" ]; then
     TEST_RESULT=$(cd "$GIT_ROOT" && npm test --silent 2>&1 || true)
     if echo "$TEST_RESULT" | grep -qi "fail\|error"; then
@@ -46,7 +46,7 @@ fi
 if command -v pytest &>/dev/null && command -v coverage &>/dev/null; then
   COV_RESULT=$(cd "$GIT_ROOT" && coverage report --fail-under=80 2>&1 || true)
   if echo "$COV_RESULT" | grep -q "FAIL"; then
-    COV_PCT=$(echo "$COV_RESULT" | grep -oP 'TOTAL.*?(\d+)%' | grep -oP '\d+%' || echo "unknown")
+    COV_PCT=$(echo "$COV_RESULT" | grep -oE '[0-9]+%' | tail -1 || echo "unknown")
     WARNINGS="${WARNINGS}[COMPLETION GATE] Coverage at ${COV_PCT} (below 80% threshold). Add more tests. "
   fi
 fi
@@ -66,6 +66,10 @@ fi
 
 # Output
 if [ -n "$WARNINGS" ]; then
-  ESCAPED=$(echo "$WARNINGS" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo "\"$WARNINGS\"")
+  ESCAPED=$(echo "$WARNINGS" | python3 -c "import json,sys; print(json.dumps(sys.stdin.read().strip()))")
+  if [ $? -ne 0 ]; then
+    echo "{\"additionalContext\": \"[COMPLETION GATE] Warnings detected but could not be JSON-encoded. Ensure python3 is available.\"}"
+    exit 0
+  fi
   echo "{\"additionalContext\": ${ESCAPED}}"
 fi

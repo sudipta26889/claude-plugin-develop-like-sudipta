@@ -201,3 +201,71 @@ Production:   Cloud Secret Manager + automatic rotation where supported
     - id: git-secrets
       stages: [pre-commit]
 ```
+
+## Key Rotation Implementation
+
+Every secret must have a rotation plan:
+
+| Secret Type | Rotation Interval | Method |
+|------------|-------------------|--------|
+| API keys | 90 days | Automated via vault policy |
+| JWT signing keys | 180 days | Dual-key overlap (old key valid 24h after rotation) |
+| Database passwords | 90 days | Automated via cloud provider |
+| TLS certificates | Auto (Let's Encrypt) | certbot auto-renew |
+| Service account tokens | 60 days | Kubernetes secret rotation |
+
+**Rotation procedure:**
+1. Generate new secret
+2. Deploy new secret alongside old (dual-active window)
+3. Verify all services use new secret
+4. Revoke old secret after grace period (24h minimum)
+5. Audit log: record rotation timestamp, rotator identity, affected services
+
+## CORS Configuration
+
+```python
+# FastAPI example
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://app.example.com"],  # NEVER use ["*"] in production
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+    max_age=3600,
+)
+```
+
+**Rules:**
+- Never `allow_origins=["*"]` with `allow_credentials=True`
+- Whitelist specific origins, not wildcards
+- Restrict methods to what's actually needed
+
+## Webhook Signature Verification
+
+Always verify webhook signatures before processing:
+
+```python
+import hmac
+import hashlib
+
+def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", signature)
+```
+
+**Rules:**
+- Use `hmac.compare_digest()` (constant-time comparison) — never `==`
+- Verify BEFORE parsing the payload
+- Reject requests with missing or invalid signatures with HTTP 401
+- Log all verification failures
+
+## Password Reset Security
+
+1. **Token generation:** cryptographically random, ≥32 bytes, single-use
+2. **Token expiry:** 15 minutes maximum
+3. **Rate limiting:** max 3 reset requests per email per hour
+4. **Response:** always return "If an account exists, a reset email has been sent" (prevent enumeration)
+5. **Invalidation:** invalidate all existing tokens when a new one is generated
+6. **Notification:** email user on successful password change

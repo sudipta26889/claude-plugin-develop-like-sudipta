@@ -40,14 +40,21 @@ if __name__ == "__main__":
         
     print(f"🔒 [PoC VALIDATOR] Script {script_path} passed static safety checks. Executing in sandbox...")
     try:
-        # Run script with timeout
-        result = subprocess.run(['python3', script_path], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            ["python3", script_path],
+            capture_output=True, text=True, timeout=10,
+        )
         print("--- STDOUT ---")
-        print(result.stdout)
+        if result.stdout:
+            print(result.stdout)
         print("--- STDERR ---")
-        print(result.stderr)
+        if result.stderr:
+            print(result.stderr)
         print(f"Exit Code: {result.returncode}")
+        sys.exit(result.returncode)
     except subprocess.TimeoutExpired:
         print("⏳ [PoC VALIDATOR] Exploit execution timed out (10s).")
+        sys.exit(124)
     except Exception as e:
-        print(f"❌ [PoC VALIDATOR] Execution error: {e}")
+        print(f"❌ [PoC VALIDATOR] Execution error: {e}", file=sys.stderr)
+        sys.exit(1)

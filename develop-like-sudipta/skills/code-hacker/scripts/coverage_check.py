@@ -4,6 +4,7 @@
 Verifies all 22 categories were audited. Reports gaps for agent fallback.
 """
 import json
+import os
 import sys
 
 REQUIRED_CATEGORIES = {
@@ -25,10 +26,11 @@ def check_coverage(results_path: str):
     by_cat = data.get("by_category", {})
     scripts = data.get("script_results", [])
 
-    # Category is covered only if script ran OK AND produced findings
+    # Category is covered if script ran OK (regardless of finding count)
+    # Zero findings from a successful run = legitimately clean
     for sr in scripts:
         cat = sr.get("category", "")
-        if sr.get("status") == "OK" and len(sr.get("findings", [])) > 0:
+        if sr.get("status") == "OK":
             covered.add(cat)
 
     gaps = REQUIRED_CATEGORIES - covered
@@ -64,6 +66,12 @@ def check_coverage(results_path: str):
     return gaps
 
 if __name__ == "__main__":
-    results_path = sys.argv[1] if len(sys.argv) > 1 else "/tmp/hack_results.json"
-    gaps = check_coverage(results_path)
+    import argparse
+    parser = argparse.ArgumentParser(description="☠️ CODE HACKER — Coverage Checker")
+    parser.add_argument("results", nargs="?", default="/tmp/hack_results.json", help="Path to scan results JSON")
+    args = parser.parse_args()
+    if not os.path.isfile(args.results):
+        print(f"❌ Results file not found: {args.results}", file=sys.stderr)
+        sys.exit(1)
+    gaps = check_coverage(args.results)
     sys.exit(0 if not gaps else 1)

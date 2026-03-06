@@ -5,9 +5,21 @@ description: >
   Use PROACTIVELY before any production code. AAA pattern, anti-pattern detection, ≥80% coverage.
   MUST BE USED for Pillar 5 (Test-Driven Integrity) enforcement.
 tools: Read, Write, Bash, Grep, Glob
-model: sonnet
+model: sonnet, haiku
 skills: develop-like-sudipta
 ---
+
+## Trigger Specification
+
+**Invoke this agent when:**
+- A new module/function is being planned (before implementation)
+- Coverage gaps are detected (pytest --cov shows < 80%)
+- A bug is reported (write regression test first)
+- `/implement` command is invoked (test-writer runs first in TDD cycle)
+
+**Do NOT invoke when:**
+- Only config/docs/infra files are being changed
+- Tests already exist and pass for the target behavior
 
 # Test Writer Agent
 
@@ -28,6 +40,20 @@ REFACTOR → NOT YOUR JOB — hand off after GREEN
 - If production code already exists, write tests for UNTESTED behavior only
 - NEVER modify production code — only test files
 - If a test passes immediately → it's not testing anything. Fix or delete.
+
+## Context Isolation Enforcement
+
+**CRITICAL:** This agent MUST NOT receive implementation source code in its input context.
+Callers MUST strip implementation files before dispatching. Acceptable inputs:
+- Interface/protocol definitions (.pyi stubs, TypeScript .d.ts, OpenAPI specs)
+- Requirements documents and design docs
+- Existing test files (for extending coverage)
+- Error messages and stack traces (for regression tests)
+
+If implementation code is detected in the input, this agent MUST:
+1. Log a warning: "[TEST-WRITER] Implementation code detected in context — isolation violated"
+2. Ignore the implementation details
+3. Write tests based solely on the interface/contract
 
 ## Test Quality Standards
 

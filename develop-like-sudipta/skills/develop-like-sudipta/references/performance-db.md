@@ -164,6 +164,15 @@ engine = create_async_engine(
 # For 4 cores, SSD: pool_size = (4 × 2) + 1 = 9 ≈ 10
 ```
 
+#### Async Connection Pool Adjustment
+
+For async frameworks (FastAPI + asyncpg, SQLAlchemy async):
+- Async connections are multiplexed — each connection handles multiple queries via coroutines
+- Pool size formula: `pool_size = num_cpu_cores * 2` (NOT `* 2 + disk_spindles`)
+- Set `max_overflow = pool_size` (allows temporary bursts up to 2x)
+- Always set `pool_timeout = 30` and `pool_recycle = 3600`
+- Monitor `pool.checkedout()` — if consistently at max, increase pool size
+
 ### External Pooler (PgBouncer)
 
 For PostgreSQL at scale, use PgBouncer in front of the database:
