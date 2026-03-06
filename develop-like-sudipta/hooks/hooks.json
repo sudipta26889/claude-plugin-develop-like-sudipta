@@ -1,5 +1,4 @@
 {
-  "_paths_note": "Paths below assume default install location (~/.claude/skills/develop-like-sudipta/hooks/). Run hooks/setup.sh to auto-update paths for your actual installation.",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/skills/develop-like-sudipta/hooks/tdd-gate.sh"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/tdd-gate.sh"
           }
         ]
       }
@@ -18,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/skills/develop-like-sudipta/hooks/post-edit-check.sh"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-check.sh"
           }
         ]
       }
@@ -28,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/skills/develop-like-sudipta/hooks/completion-gate.sh"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/completion-gate.sh"
           }
         ]
       }
@@ -38,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/skills/develop-like-sudipta/hooks/state-saver.sh"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/state-saver.sh"
           }
         ]
       }
