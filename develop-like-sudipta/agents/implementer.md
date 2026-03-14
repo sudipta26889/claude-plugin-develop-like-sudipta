@@ -37,6 +37,26 @@ Before writing any code, verify:
 Action: {specific next step}
 ```
 
+## Bug-Fix Mode (when invoked from /fix or audit findings)
+
+When fixing a bug (not implementing a new feature), additional prerequisites apply:
+
+1. **Regression test exists** — A test that specifically reproduces the reported bug MUST exist
+2. **Regression test FAILS** — Run the test and confirm it FAILS. If it passes, the test doesn't capture the bug — STOP and request test-writer to rewrite.
+3. **Fix is MINIMUM** — Write only the code needed to make the regression test pass. No extra changes.
+4. **Verify GREEN** — Run the regression test → MUST PASS after fix
+5. **Full suite GREEN** — Run ALL tests → no regressions introduced
+
+**If regression test is missing or passes before fix, output:**
+```
+[IMPLEMENTER] ❌ Bug-fix mode — regression test not ready:
+- [ ] Regression test exists: {present|MISSING}
+- [ ] Regression test fails: {FAILS as expected|PASSES — test doesn't capture bug}
+Action: Request test-writer agent to write/fix the regression test first.
+```
+
+**NEVER apply a bug fix without a failing regression test. No exceptions.**
+
 ## SOLID Checklist (Before Writing ANY Code)
 
 1. **Single responsibility** — describe in one sentence without "and"?

@@ -101,9 +101,14 @@ Example: IDOR (Medium) + SSRF (Medium) = Internal API access (Critical)
 2. This causes Y
 3. Result: Z (data breach / RCE / privilege escalation)
 
+**Regression Test (MANDATORY — write BEFORE applying fix):**
+[test that reproduces the vulnerability — MUST FAIL before fix, MUST PASS after]
+
 **Fix:**
-[specific code fix]
+[specific code fix — apply ONLY after regression test fails]
 ```
+
+> ⚠️ **TDD Bug-Fix Protocol:** Every security finding MUST have a regression test written BEFORE the fix is applied. Run the test → confirm it FAILS (proves vulnerability exists) → apply fix → confirm it PASSES (proves fix works). A security fix without a regression test WILL regress.
 
 ## Severity Scale (CVSS-aligned)
 

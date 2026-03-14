@@ -110,6 +110,8 @@ Don't use agent teams for: quick fixes (<3 files), single-layer changes, researc
 | "Env vars are fine" | Check ALL surfaces. Drift = bug. One missing = production outage (3). |
 | "Works on my machine" | Add health checks, Docker, CI. Local ≠ production (11). |
 | "Tests are passing" | Real behavior or mocking everything? Run anti-pattern scan (5). |
+| "I see the bug, quick fix" | NO. Write regression test FIRST. Verify it FAILS. Then fix. Then verify it PASSES (5). |
+| "The fix is obvious" | Obvious fixes break again without regression tests. Test first, always (5). |
 | "I'll clean up later" | Boy Scout Rule: leave it better NOW. Zero dangling code (9). |
 | "This package works fine" | Is it maintained? Superseded? Search before installing (10). |
 | "API key is simpler" | No rotation, no scoping, no revocation. Use OAuth 2.1 + PKCE (7). |
@@ -144,6 +146,19 @@ For full red-team pen-test: `/hack` command (delegates to `code-hacker` skill �
 TDD: RED → GREEN → REFACTOR. Failing test FIRST. ≥80% coverage. AAA pattern.
 Anti-patterns: over-mocking, circular assertions, weak assertions, no error paths.
 > `test-writer` agent for RED phase. `implementer` agent for GREEN. Hook runs test suite at Stop.
+
+#### Bug-Fix TDD Protocol (MANDATORY)
+When a bug is found (by review, audit, user report, or any other means), NEVER fix directly:
+```
+1. REPRODUCE   → Understand the bug behavior
+2. REGRESS     → Write a regression test that captures the exact bug (test-writer agent)
+3. VERIFY RED  → Run test → MUST FAIL (proves test catches the bug)
+4. FIX         → Minimum code change to pass the test (implementer agent)
+5. VERIFY GREEN → Run test → MUST PASS (proves fix works)
+6. FULL SUITE  → Run all tests → no regressions introduced
+```
+WHY: A fix without a regression test is a fix that WILL break again. The regression test is the
+permanent guard — it ensures the same bug can never silently return. This is non-negotiable.
 
 ### Pillar 6 — Resilience → `implementer` agent
 Structured JSON logging. Retry w/ backoff+jitter. Circuit breakers. Health checks.
@@ -247,12 +262,25 @@ Do NOT repeat steps 1-2. Use `/implement` command.
 15. VERIFY (Stop hook)  → Script: tests + coverage. Manual: evidence-based status.
 ```
 
+### Bug-Fix Entry Point (from audit/review/report)
+When a bug is found at steps 7, 8, 11, or reported by user:
+```
+ A. REPRODUCE  → Confirm bug behavior. Document expected vs actual.
+ B. REGRESS    → test-writer agent writes regression test. /fix command.
+ C. VERIFY RED → Run test → MUST FAIL (proves test captures the bug)
+ D. FIX        → implementer agent writes minimum fix
+ E. VERIFY GREEN → Run test → MUST PASS (proves fix works)
+ F. FULL SUITE → All tests pass, no regressions
+ G. RESUME     → Return to main workflow at the step where bug was found
+```
+
 ---
 
 # The Bottom Line
 
 Plan with evidence (or skip planning if plan exists). Research before importing.
-Failing test FIRST. SOLID code with defensive checks and WHY docs. Secure every endpoint.
+Failing test FIRST — for new features AND bug fixes. Regression test before EVERY fix.
+SOLID code with defensive checks and WHY docs. Secure every endpoint.
 Sync every env var. Idempotent API contracts. OAuth 2.1 for MCP. Resilience built in.
 Disciplined commits (no AI co-author). Clean codebase. CI/CD deployed. Tool-verified before done.
 

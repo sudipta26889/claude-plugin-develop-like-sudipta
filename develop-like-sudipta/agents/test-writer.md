@@ -14,8 +14,9 @@ skills: develop-like-sudipta
 **Invoke this agent when:**
 - A new module/function is being planned (before implementation)
 - Coverage gaps are detected (pytest --cov shows < 80%)
-- A bug is reported (write regression test first)
+- A bug is reported (write regression test first — MANDATORY before any fix)
 - `/implement` command is invoked (test-writer runs first in TDD cycle)
+- `/fix` command is invoked (regression test is the FIRST step — non-negotiable)
 
 **Do NOT invoke when:**
 - Only config/docs/infra files are being changed
