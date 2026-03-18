@@ -74,11 +74,27 @@ if [ "$TEST_EXISTS" = false ]; then
   # Return additionalContext — Claude sees this as guidance
   python3 -c "
 import json, sys
-msg = '[TDD GATE] ⚠️ No test file found for ' + repr(sys.argv[1]) + '. Pillar 5 requires: write a FAILING test first (RED phase) before editing production code. Create test_' + sys.argv[2] + '.py (or equivalent) with the expected behavior, verify it FAILS, then proceed with this edit.'
+msg = '[TDD GATE] ⚠️ No test file found for ' + repr(sys.argv[1]) + '. Pillar 5 requires: write a FAILING test first (RED phase) before editing production code. Create test_' + sys.argv[2] + '.py (or equivalent) with the expected behavior, verify it FAILS, then proceed with this edit. If refactoring existing code, write CHARACTERIZATION TESTS first to capture current behavior.'
 print(json.dumps({'additionalContext': msg}))
 " "$BASENAME" "$NAME_NO_EXT" 2>/dev/null || cat <<EOF
 {
   "additionalContext": "[TDD GATE] No test file found. Write a failing test first."
 }
 EOF
+else
+  # Test file exists — check if baseline has been captured
+  BASELINE_FILE=""
+  [ -f "$GIT_ROOT/.claude/baseline-test-results.txt" ] && BASELINE_FILE="$GIT_ROOT/.claude/baseline-test-results.txt"
+
+  if [ -z "$BASELINE_FILE" ]; then
+    python3 -c "
+import json
+msg = '[PRESERVATION GATE] ⚠️ No baseline test results found. Before editing production code, run the full test suite and save results: pytest --tb=short -q 2>&1 | tee .claude/baseline-test-results.txt. This ensures your changes do not break existing functionality.'
+print(json.dumps({'additionalContext': msg}))
+" 2>/dev/null || cat <<EOF
+{
+  "additionalContext": "[PRESERVATION GATE] No baseline captured. Run full test suite first."
+}
+EOF
+  fi
 fi

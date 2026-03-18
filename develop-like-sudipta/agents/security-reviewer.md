@@ -110,6 +110,11 @@ Example: IDOR (Medium) + SSRF (Medium) = Internal API access (Critical)
 
 > ⚠️ **TDD Bug-Fix Protocol:** Every security finding MUST have a regression test written BEFORE the fix is applied. Run the test → confirm it FAILS (proves vulnerability exists) → apply fix → confirm it PASSES (proves fix works). A security fix without a regression test WILL regress.
 
+> ⚠️ **Preservation Protocol:** Before applying ANY security fix, capture baseline test results.
+> After EACH fix, run the FULL test suite. If ANY previously-passing test fails, the security fix
+> broke existing functionality → ROLLBACK immediately. A security fix that breaks the system
+> is worse than the vulnerability — it's a guaranteed outage vs a potential exploit.
+
 ## Severity Scale (CVSS-aligned)
 
 | Level | CVSS | Meaning | Example |

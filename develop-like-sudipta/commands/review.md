@@ -6,6 +6,7 @@ description: Comprehensive code review — quality, security, test coverage, and
 
 Run a full review combining multiple agents in parallel:
 
+0. **BASELINE CAPTURE** — Run full test suite, record pass/fail counts BEFORE any remediation
 1. **Code quality** — dispatch `code-reviewer` agent on changed files
 2. **Security** — dispatch `security-reviewer` agent on changed files
 3. **Test coverage** — run `pytest --cov` or `vitest --coverage`, check ≥80%
@@ -14,5 +15,9 @@ Run a full review combining multiple agents in parallel:
 
 Synthesize all findings into a single report ordered by severity.
 Include the 7-dimension Engineering Verdict from code-reviewer.
+
+**REMEDIATION (if requested):** Apply fixes ONE at a time using `/fix` command.
+After EACH fix, run full test suite. If any baseline test breaks → ROLLBACK immediately.
+Never batch-fix findings — one change, one verification, one commit.
 
 For deeper security analysis, suggest `/hack` (full 23-category red-team audit).

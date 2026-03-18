@@ -28,6 +28,7 @@ Without superpowers: fully self-contained — all pillars + hooks + agents work 
 
 | # | Pillar | Core Principle | Enforcement |
 |---|--------|---------------|-------------|
+| 0 | **Preserve First** | Never break what works. Baseline → atomic change → verify → rollback on failure. | Preservation Protocol + completion-gate |
 | 1 | **Plan First** | Evidence-based. Brainstorm → plan → verify → execute. | MD + superpowers:brainstorming |
 | 2 | **Code Quality** | SOLID + DRY + KISS + defensive + audit-fix cycles. | `code-reviewer` agent + PostToolUse lint |
 | 3 | **Env Sync** | Every env var change updates ALL surfaces simultaneously. | `env-sync-checker` agent + PostToolUse script |
@@ -95,6 +96,73 @@ Don't use agent teams for: quick fixes (<3 files), single-layer changes, researc
 
 ---
 
+## Preservation Protocol (MANDATORY for ALL changes to existing codebases)
+
+**RULE: Never break what already works. Every change must prove it preserves existing functionality.**
+
+This protocol applies to ALL changes — refactoring, best practices, security fixes, code quality
+improvements, vulnerability remediation, dependency updates, or ANY modification to existing code.
+
+### Step 0 — Baseline Capture (BEFORE touching ANY code)
+```bash
+# Python
+pytest --tb=short -q 2>&1 | tee .claude/baseline-test-results.txt
+# TypeScript/JS
+npm test 2>&1 | tee .claude/baseline-test-results.txt
+```
+Record: total tests, passed, failed, errors. If the suite already has failures,
+document them as **pre-existing** — your changes must NOT increase the failure count.
+
+**If NO tests exist:** Write characterization tests FIRST that capture current behavior.
+Do NOT change code until you have tests proving what it currently does.
+
+### Step 1 — One Atomic Change at a Time
+Make exactly ONE logical change. NOT a batch. NOT "fix 5 things at once."
+One change = one concept (rename, extract method, fix one vulnerability, etc.)
+
+### Step 2 — Verify After EACH Change
+```bash
+pytest --tb=short -q   # or npm test
+```
+Compare against baseline:
+- ✅ Same or better pass count → proceed to next change
+- ❌ ANY previously-passing test now fails → **IMMEDIATE ROLLBACK**
+
+### Step 3 — Rollback Protocol (MANDATORY when verification fails)
+```bash
+git diff <file>           # See what changed
+git checkout -- <file>    # Revert the breaking change
+pytest --tb=short -q      # Confirm baseline restored
+```
+Then: analyze WHY the change broke functionality. Rethink the approach.
+Document the failed attempt: what was tried, what broke, why.
+
+### Step 4 — Resume
+Only after rollback is confirmed and baseline is restored, attempt an
+alternative approach for the same improvement — or skip it if too risky.
+
+### Characterization Tests (when no tests exist)
+Before refactoring untested code, write tests that capture CURRENT behavior:
+```python
+def test_existing_behavior_preserved():
+    """Characterization test — captures current behavior before refactoring.
+    If this test fails after refactoring, the refactor broke something."""
+    result = existing_function(known_input)
+    assert result == <whatever_it_currently_returns>
+```
+These tests are the safety net. They don't test correctness — they test preservation.
+
+### Anti-Patterns That Break Systems
+| What Goes Wrong | Why | Prevention |
+|----------------|-----|-----------|
+| Batch changes without verification | One bad change hides among 10 good ones | One change → verify → next change |
+| "Improving" code structure changes behavior | Refactoring is NOT the same as rewriting | Characterization tests catch behavioral drift |
+| Security fix changes API contract | Fixing vuln shouldn't change return types/signatures | Test API contracts explicitly |
+| Best practice migration breaks integrations | "Better" code that breaks callers is worse code | Test integration points before touching them |
+| Dependency update breaks compatibility | New version ≠ drop-in replacement | Pin versions, test after EACH update |
+
+---
+
 ## Anti-Rationalization Table
 
 | Excuse | Rebuttal |
@@ -112,6 +180,10 @@ Don't use agent teams for: quick fixes (<3 files), single-layer changes, researc
 | "Tests are passing" | Real behavior or mocking everything? Run anti-pattern scan (5). |
 | "I see the bug, quick fix" | NO. Write regression test FIRST. Verify it FAILS. Then fix. Then verify it PASSES (5). |
 | "The fix is obvious" | Obvious fixes break again without regression tests. Test first, always (5). |
+| "I'll fix all findings at once" | Batch changes = untraceable breakage. ONE change → verify → next (Preservation). |
+| "Refactoring won't break anything" | Refactoring without baseline tests WILL break things. Capture baseline FIRST (Preservation). |
+| "Best practices can't hurt" | Best practices applied without verification destroy working systems. Verify EACH change (Preservation). |
+| "Tests don't exist, so I'll just fix" | No tests = write characterization tests FIRST. Never change untested code blind (Preservation). |
 | "I'll clean up later" | Boy Scout Rule: leave it better NOW. Zero dangling code (9). |
 | "This package works fine" | Is it maintained? Superseded? Search before installing (10). |
 | "API key is simpler" | No rotation, no scoping, no revocation. Use OAuth 2.1 + PKCE (7). |
@@ -243,7 +315,11 @@ All skill descriptions share a 15,000-character budget. Current: ~950 chars. Mon
 **ENTRY POINT:** If plan/design doc already exists → START AT STEP 3 or 4.
 Do NOT repeat steps 1-2. Use `/implement` command.
 
+**⚠️ EXISTING CODEBASE?** Before ANY code changes, run the Preservation Protocol:
+capture baseline test results. EVERY change verified against baseline. Rollback on failure.
+
 ```
+ 0. BASELINE (Pres.)    → Run full test suite. Record pass/fail counts. This is the contract.
  1. BRAINSTORM (1)      → superpowers:brainstorming OR /plan command
  2. WRITE PLAN (1)      → superpowers:writing-plans OR .claude/plans/<n>.md
     ─── SKIP 1-2 IF PLAN/DESIGN DOC ALREADY EXISTS ───

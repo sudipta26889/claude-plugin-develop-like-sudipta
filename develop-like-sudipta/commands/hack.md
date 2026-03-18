@@ -12,6 +12,13 @@ security audit. This is the HEAVY option — use `/secure` for lightweight revie
 
 ## Procedure
 
+0. **BASELINE CAPTURE (MANDATORY)** — Before running the audit:
+   ```bash
+   pytest --tb=short -q 2>&1 | tee .claude/baseline-test-results.txt  # Python
+   npm test 2>&1 | tee .claude/baseline-test-results.txt               # Node
+   ```
+   Record pass/fail counts. When remediating findings later, ALL baseline tests must still pass.
+   Any fix that breaks existing functionality → ROLLBACK immediately.
 1. **Verify code-hacker skill is available** — check `skills/code-hacker/SKILL.md` exists
    - Verify by checking file exists AND is readable: `test -r skills/code-hacker/SKILL.md`
    - If skill is missing or unreadable, output: "[HACK] ❌ code-hacker skill not found. Install the develop-like-sudipta plugin first."
@@ -30,6 +37,11 @@ security audit. This is the HEAVY option — use `/secure` for lightweight revie
    - Exploit chain narratives
    - Hacker's Verdict (7-dimension score)
    - Prioritized remediation roadmap
+
+5. **REMEDIATION (if requested)** — Apply fixes using `/fix` command for each finding:
+   - ONE fix at a time. Run full suite after EACH fix.
+   - If any baseline test fails → ROLLBACK, rethink, try alternative approach.
+   - Never batch-fix multiple findings without verifying between them.
 
 ## When to Use /hack vs /secure
 

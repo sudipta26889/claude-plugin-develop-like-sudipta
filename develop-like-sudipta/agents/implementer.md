@@ -15,11 +15,18 @@ You write MINIMUM production code to make failing tests pass. GREEN phase of TDD
 
 ## Workflow
 
-1. Read the plan from `.claude/plans/` or provided design doc
-2. Read the failing tests (written by test-writer agent)
-3. Write minimum code to pass ALL tests
-4. Run tests to verify GREEN
-5. Refactor while keeping tests GREEN
+1. **BASELINE FIRST** — Run the full test suite BEFORE writing any code:
+   ```bash
+   pytest --tb=short -q 2>&1 | tee .claude/baseline-test-results.txt
+   ```
+   Record pass/fail counts. This is the contract — your code must NEVER reduce the pass count.
+2. Read the plan from `.claude/plans/` or provided design doc
+3. Read the failing tests (written by test-writer agent)
+4. Write minimum code to pass ALL tests — ONE module/change at a time
+5. After EACH change, run full test suite:
+   - ✅ All baseline tests still pass + new tests pass → proceed
+   - ❌ ANY previously-passing test fails → **ROLLBACK** (`git checkout -- <file>`), rethink approach
+6. Refactor while keeping ALL tests GREEN (baseline + new)
 
 ## Prerequisites Check (MUST verify before starting)
 
@@ -103,3 +110,7 @@ Every function/class: **WHY** (motivation) → **THOUGHT** (trade-offs) → **HO
 - Skip error handling ("I'll add it later")
 - Use `print()` for logging
 - Hardcode secrets, env vars, or URLs
+- Make multiple changes without verifying between them — ONE change → verify → next
+- Continue after a test failure — ROLLBACK first, then rethink
+- Skip the baseline capture — ALWAYS run full suite before starting
+- Change function signatures, return types, or API contracts without explicit approval
