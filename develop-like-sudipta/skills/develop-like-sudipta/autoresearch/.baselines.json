@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "ts": "2026-05-11T10:54:00Z",
+    "target_hash": "pre-normalize",
+    "score": 47.91,
+    "accepted": true,
+    "kind": "archived-pre-normalize",
+    "note": "Old 0-100 weighted-accuracy baseline. Preserved for history. Superseded by F1 baseline below after scorer normalization (v4.2 gap fix)."
+  },
+  {
+    "ts": "2026-05-11T10:54:00Z",
+    "target_hash": "2628221dd7da9995a46370b04af978fa2ef9a94350c37dc8a7bc735f4c15f0a9",
+    "score": 0.0833,
+    "accepted": true,
+    "kind": "baseline",
+    "note": "First F1 baseline after scorer normalization to 0-1 F1 scale (matches sibling scorers). MATCH_THRESHOLD=0.60. Low recall (0.043) reflects the harsh 60% overlap gate against the current SKILL.md description — autoresearch experiments can now lift this."
+  }
+]

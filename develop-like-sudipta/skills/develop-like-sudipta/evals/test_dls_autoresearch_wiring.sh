@@ -57,11 +57,19 @@ else
   note_fail "Test 2: target.txt expected 'SKILL.md', got '$TARGET_NAME' or SKILL.md missing"
 fi
 
-# ----- Test 3: score.sh is executable and emits ONE float -----
+# ----- Test 3: score.sh is executable and emits ONE float in [0.0, 1.0] (F1) -----
+# As of v4.2, score.sh takes no args (paths resolve from script location), matching
+# sibling scorers (sd-claude-code-access, code-hacker). It emits F1 on a 0-1 scale.
 if [ -x "$AR_DIR/score.sh" ]; then
-  SCORE_OUT=$(bash "$AR_DIR/score.sh" "$SKILL_DIR" 2>/dev/null | tail -n 1)
+  SCORE_OUT=$(bash "$AR_DIR/score.sh" 2>/dev/null | tail -n 1)
   if echo "$SCORE_OUT" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
-    note_pass "Test 3: score.sh emits one float (got: $SCORE_OUT)"
+    # Range check: 0.0 <= F1 <= 1.0
+    IN_RANGE=$(python3 -c "v=float('$SCORE_OUT'); print(1 if 0.0 <= v <= 1.0 else 0)" 2>/dev/null)
+    if [ "$IN_RANGE" = "1" ]; then
+      note_pass "Test 3: score.sh emits one F1 float in [0.0, 1.0] (got: $SCORE_OUT)"
+    else
+      note_fail "Test 3: score.sh emitted float outside [0.0, 1.0] (got: '$SCORE_OUT')"
+    fi
   else
     note_fail "Test 3: score.sh did not emit a single float (got: '$SCORE_OUT')"
   fi
@@ -70,24 +78,32 @@ else
 fi
 
 # ----- Test 4: score.sh exits 0 on success -----
-if bash "$AR_DIR/score.sh" "$SKILL_DIR" >/dev/null 2>&1; then
+if bash "$AR_DIR/score.sh" >/dev/null 2>&1; then
   note_pass "Test 4: score.sh exits 0 on healthy SKILL.md + corpus"
 else
   note_fail "Test 4: score.sh exited non-zero on a healthy SKILL.md + corpus"
 fi
 
-# ----- Test 5: score.sh exits non-zero when trigger_corpus.json is missing -----
+# ----- Test 5: score.sh exits non-zero when trigger_corpus.json is missing,
+#               AND emitted score (when present) stays in F1 range [0.0, 1.0] -----
 TMP_BACKUP="$AR_DIR/.trigger_corpus.json.bak.$$"
 if [ -f "$CORPUS" ]; then
   mv "$CORPUS" "$TMP_BACKUP"
   set +e
-  bash "$AR_DIR/score.sh" "$SKILL_DIR" >/dev/null 2>&1
+  bash "$AR_DIR/score.sh" >/dev/null 2>&1
   RC=$?
   set -e
   mv "$TMP_BACKUP" "$CORPUS"
   TMP_BACKUP=""
   if [ "$RC" -ne 0 ]; then
-    note_pass "Test 5: score.sh exits non-zero when trigger_corpus.json is missing (rc=$RC)"
+    # Also re-verify the upper bound on a healthy run (sticky regression guard)
+    S=$(bash "$AR_DIR/score.sh" 2>/dev/null | tail -n 1)
+    UPPER_OK=$(python3 -c "v=float('$S'); print(1 if v <= 1.0 else 0)" 2>/dev/null)
+    if [ "$UPPER_OK" = "1" ]; then
+      note_pass "Test 5: score.sh exits non-zero when trigger_corpus.json is missing (rc=$RC); healthy F1 within [0,1] upper bound (=$S)"
+    else
+      note_fail "Test 5: missing-fixture exit code OK (rc=$RC) but healthy F1 exceeded 1.0 (got '$S')"
+    fi
   else
     note_fail "Test 5: score.sh exited 0 with missing trigger_corpus.json"
   fi

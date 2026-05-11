@@ -6,18 +6,18 @@ description should fire on coding / architecture / refactor / CI-CD / debugging 
 prompts but NOT on unrelated topics (cooking, travel, accounting, scheduling, generic writing).
 
 ## Metric
-Weighted trigger accuracy on `autoresearch/trigger_corpus.json` (TP / FP / TN / FN as defined in
+F1 score on `autoresearch/trigger_corpus.json` (TP / FP / TN / FN as defined in
 `references/scoring_design.md` from the autoresearch skill). The proxy used here is lexical
 content-word overlap between query and `SKILL.md` description: overlap >= 0.60 of query content
-words counts as a "match". From the per-query matches we compute precision, recall, and F1, then
-report a single weighted-accuracy number on a 0.0–100.0 scale (higher is better).
+words counts as a "match". From the per-query matches we compute precision, recall, and F1, and
+report the F1 score on stdout as a single float in [0.0, 1.0] (higher is better).
 
-The 0–100 range matches the other v4.1 wired skills (sd-claude-code-access, code-hacker) so the
-`/autoresearch` baselines and proposed-vs-current deltas are directly comparable.
+This 0–1 F1 scale matches the other v4.1+ wired skills (sd-claude-code-access, code-hacker) so the
+`/autoresearch` baselines and proposed-vs-current deltas are directly comparable across skills.
 
 ## Constraints (locked)
 - Editable target: `SKILL.md` (description field in YAML frontmatter)
-- Scoring command: `bash autoresearch/score.sh <skill-dir>`
+- Scoring command: `bash autoresearch/score.sh` (no args; paths resolve from script location)
 - Time budget per experiment: 300 sec
 - Max experiments per run: 50
 - Locked files: everything else in skill dir
