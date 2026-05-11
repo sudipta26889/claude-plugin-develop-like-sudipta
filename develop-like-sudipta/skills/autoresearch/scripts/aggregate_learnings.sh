@@ -41,13 +41,29 @@ fi
 # Stream all tail files through python; filter by ts; group by date; append to per-day jsonl.
 # Python because jq is not guaranteed, and shell sort-by-ts is fragile.
 python3 - "$CCBRIDGE" "$AGG_DIR" "$SINCE" "$DATE_FILTER" "$CURSOR" <<'PY'
-import json, os, sys, glob
+import json, os, re, sys, glob
 ccbridge, agg_dir, since, date_filter, cursor_path = sys.argv[1:]
-tail_glob = os.path.join(ccbridge, "learnings", "*.jsonl")
+# v5.0 — walk BOTH the local tails (learnings/*.jsonl) AND the remote-pulled
+# tails (learnings/remote-<host>/*.jsonl). sync_learnings.sh deposits per-peer
+# learning files under remote-<host>/ subdirs; without picking those up the
+# autoresearch loop sees only the local Mac's data and misses cross-MACHINE
+# signal (vs cross-PROJECT, which the central tail already handles).
+local_glob  = os.path.join(ccbridge, "learnings", "*.jsonl")
+remote_glob = os.path.join(ccbridge, "learnings", "remote-*", "*.jsonl")
+tails = sorted(glob.glob(local_glob) + glob.glob(remote_glob))
+
+def source_host_for(path):
+    # learnings/remote-<host>/<id>.jsonl  →  <host>
+    # learnings/<id>.jsonl                →  "local"
+    parent = os.path.basename(os.path.dirname(path))
+    m = re.match(r"^remote-(.+)$", parent)
+    return m.group(1) if m else "local"
+
 buckets = {}   # date -> [lines]
 max_ts = since or ""
 
-for tail in sorted(glob.glob(tail_glob)):
+for tail in tails:
+    src_host = source_host_for(tail)
     try:
         with open(tail) as f:
             for line in f:
@@ -64,7 +80,12 @@ for tail in sorted(glob.glob(tail_glob)):
                 day = ts[:10]  # YYYY-MM-DD
                 if date_filter and day != date_filter:
                     continue
-                buckets.setdefault(day, []).append(line)
+                # Inject source_host so distillation can compute cross-machine
+                # signatures alongside cross-project ones. Don't overwrite if
+                # the line already carried a source_host (e.g. came in via a
+                # peer whose autoresearch already tagged it).
+                rec.setdefault("source_host", src_host)
+                buckets.setdefault(day, []).append(json.dumps(rec))
                 if ts > max_ts:
                     max_ts = ts
     except FileNotFoundError:
