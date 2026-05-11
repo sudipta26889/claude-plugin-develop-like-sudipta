@@ -19,7 +19,7 @@
 #
 # Env / config (in order of precedence):
 #   CC_LAUNCH_FLAGS    space-separated flags passed to claude on spawn.
-#                      Default: "--continue --chrome"
+#                      Default: "--continue --chrome --auto"
 #   TERMINAL_APP       "Terminal" (default) | "iTerm2"
 #   LAUNCH_TIMEOUT_S   poll seconds to wait for spawned CC. Default: 30
 #
@@ -36,6 +36,14 @@
 # brand-new workspace with no <workspace>/.claude/projects/, --continue may either
 # show a session-picker menu OR open a fresh session — depends on CC version.
 # Recommend CC_LAUNCH_FLAGS="--chrome" (drop --continue) for brand-new workspaces.
+#
+# v5.0 — --auto is part of the L1 reviewer layer (see references/active_watcher.md
+# and docs/plans/research-continuous-cowork-2026-05-12.md). Anthropic's April 2026
+# GA flag routes every tool call through a Sonnet 4.6 server-side classifier that
+# blocks dangerous actions per call (scope escalation, untrusted infra, prompt
+# injection). Requires claude 2.1.138+; older versions silently ignore the flag
+# (graceful degradation). Override via CC_LAUNCH_FLAGS env or <ws>/.cc/config.json
+# → cc_launch_flags. Drop --auto for users who haven't opted into the new model.
 
 set -euo pipefail
 
@@ -54,7 +62,7 @@ set -- "${ARGS[@]:-}"
 WS="${1:?usage: launch_cc.sh <workspace> [--detect-only]}"
 WS_ABS=$(cd "$WS" 2>/dev/null && pwd -P) || { echo "[launch_cc] ERROR: not a directory: $WS" >&2; exit 1; }
 
-CC_LAUNCH_FLAGS="${CC_LAUNCH_FLAGS:---continue --chrome}"
+CC_LAUNCH_FLAGS="${CC_LAUNCH_FLAGS:---continue --chrome --auto}"
 TERMINAL_APP="${TERMINAL_APP:-Terminal}"
 LAUNCH_TIMEOUT_S="${LAUNCH_TIMEOUT_S:-30}"
 
