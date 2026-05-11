@@ -388,6 +388,7 @@ Full playbook: [`references/managing_long_runs.md`](references/managing_long_run
 | `references/ssh_variant.md` | Cross-machine via headless `claude -p -c`. |
 | `references/iterm2.md` | Driving CC in iTerm2 via `TERMINAL_APP=iTerm2`. |
 | `references/state_and_resume.md` | Resume after crash via `.cc/state.json`. |
+| `references/worktree_integration.md` | Running CC inside a git worktree — WORKSPACE resolution, driver lock per-worktree, multi-worktree parallelism, merge-time test bank handling. |
 | `references/subagent_patterns.md` | Parallel audit/poll/draft when subagent spawning is available. |
 | `references/browser_testing.md` | Per-phase browser-verification loop — Chrome MCP usage, test md schema, auth handling, screenshot conventions, fail→fix loop. |
 | `references/playwright_generation.md` | Emitting Playwright spec files from test markdown — selectors, assertions, fixtures, naming, idempotent overwrite rules. |
