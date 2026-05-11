@@ -34,7 +34,58 @@ Resolution order: env > `.cc/config.json` > `package.json` > default.
    - `package.json` scripts (`"dev"` / `"start"`) — extract `--port` or default 3000/5173/8080
    - `vite.config.*`, `next.config.*`, `webpack.config.*`
    - Recent commits/CHANGELOG mentioning a port
-3. Verify the server is reachable before driving Chrome — `curl -sS -o /dev/null -w "%{http_code}\n" $URL`. If it's not running, write a `.cc/start-dev.md` directive asking CC to start it, send the trigger, wait.
+3. Verify the server is reachable before driving Chrome. **Don't hand-roll the probe** — use `wait_for_dev_server.sh` (see next section). It already encodes the URL-resolution priority, knows how to start docker-compose / `npm run dev` / a project-specific command, and surfaces a single-line status.
+
+### Dev-server orchestration
+
+Before invoking the Chrome MCP, ensure the dev server is up. Use:
+
+```bash
+bash ~/.cache/ccbridge/wait_for_dev_server.sh <workspace>
+```
+
+Optional flags: `--url URL`, `--max-wait SEC`, `--health-path PATH`.
+
+The script handles three scenarios:
+
+1. **Already running** — probes the URL once, exits 0 immediately with `already-running`. No side effects.
+2. **Not running, can be started** — detects in this order:
+   - `<workspace>/.cc/config.json` → `dev_server_start_cmd` (explicit override)
+   - `<workspace>/docker-compose.test.yml` → `docker compose -f docker-compose.test.yml up -d`
+   - `<workspace>/docker-compose.yml` → `docker compose up -d`
+   - `<workspace>/package.json` → `scripts.dev` → `npm run dev` (or `pnpm dev` / `yarn dev` based on lockfile)
+
+   Spawns the start command in the background via `nohup`, persists PID to `<workspace>/.cc/dev-server.pid` and stdout/stderr to `<workspace>/.cc/dev-server.log`, then polls the health-path every 1s up to `--max-wait` (default 60s). On 2xx → exit 0 with `started-and-ready elapsed=Ns pid=N source=...`. On timeout → kills the started process tree, dumps the last 20 lines of the log to stderr, exits 1 with `start-failed`.
+3. **Not running, no start command** — exits 2 with `not-running-no-start-cmd`. Caller decides: prompt user, skip the browser-test, or write a `.cc/start-dev.md` directive.
+
+Exit codes:
+
+| Exit | Status token | Meaning |
+|---|---|---|
+| 0 | `already-running` | URL responded 2xx on the first probe |
+| 0 | `started-and-ready` | URL responded 2xx after the script started the server |
+| 1 | `start-failed` | Start command ran but URL never responded within `--max-wait` |
+| 2 | `not-running-no-start-cmd` | URL didn't respond and no start command was detected |
+| 3 | (misconfiguration) | Bad URL, non-integer `--max-wait`, unknown flag, etc. |
+
+Configuration keys read from `<workspace>/.cc/config.json`:
+
+- `dev_server_url` — base URL, default `http://localhost:5173`
+- `dev_server_start_cmd` — override the auto-detected start command (e.g. `make dev` or `docker compose -f docker-compose.local.yml up -d`)
+- `dev_server_health_path` — path to probe, default `/`
+- `dev_server_max_wait` — startup timeout in seconds, default 60
+
+After the run finishes, tear down via the PID file (recursive walk handles `npm`-spawned children):
+
+```bash
+pid="$(cat <workspace>/.cc/dev-server.pid 2>/dev/null)"
+[ -n "$pid" ] && kill "$pid" 2>/dev/null
+rm -f <workspace>/.cc/dev-server.pid
+```
+
+Or, for docker-compose: `docker compose down` (the script intentionally does not auto-stop containers — leave that to the user to keep their workflow intact).
+
+If you previously wrote `.cc/start-dev.md` directives asking CC to start the server, retire them — the orchestrator owns that responsibility now. Reserve a directive-style nudge only for case 3 (no start cmd found) when the project's start sequence is too bespoke to auto-detect.
 
 ## Auth handling
 
