@@ -42,5 +42,18 @@
   "_comment_auth": "Persistent browser session for auth-gated apps. login_flow_path is a markdown describing the one-time login (Cowork drives it once, persists state). Env vars hold the actual credentials (never commit them).",
 
   "browser_test_excluded_phases": [],
-  "_comment_browser_test_excluded_phases": "Phase numbers that have no user-visible surface (pure backend migration, internal refactor). Skipped from browser-test step. Still logged with phase_browser_test_skipped reason='no-ui-surface'."
+  "_comment_browser_test_excluded_phases": "Phase numbers that have no user-visible surface (pure backend migration, internal refactor). Skipped from browser-test step. Still logged with phase_browser_test_skipped reason='no-ui-surface'.",
+
+  "pause_at": [
+    "substrate_chosen",
+    "phase_browser_test_failed",
+    "phase_verify_step_failed",
+    "bug_resolved",
+    "bug_escalated",
+    "danger_blocked",
+    "auth_refresh_required",
+    "dev_server_start_failed",
+    "final_e2e_suite_emitted"
+  ],
+  "_comment_pause_at": "State events that trigger a human-checkpoint pause. Empty array = fully autonomous. ['*'] = pause on every event. See references/managing_long_runs.md for details."
 }

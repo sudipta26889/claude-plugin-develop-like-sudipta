@@ -113,6 +113,54 @@ Use this directive shape for the final phase:
 
 This is the most important deliverable of an autonomous run. Without it, the user can't pick up where you left off.
 
+## Human checkpoint cadence
+
+For long autonomous runs where the user is away, Cowork should pause for user OK at meaningful checkpoints — not every phase (noisy), not never (loses oversight). The right cadence is: pause at events that materially change risk or scope, summary-update everything else.
+
+### Default cadence (events that trigger a pause)
+
+Configurable via `<workspace>/.cc/config.json` → `pause_at` (array of state-event names):
+
+| State event | Default in pause_at? | Why |
+|---|---|---|
+| `substrate_chosen` | yes | First time touching the Mac — user should see which path |
+| `phase_start` | no | Pre-flight done, user told plan upfront; no new info |
+| `phase_complete` | no | Routine — STATUS.md update is enough |
+| `phase_verify_passed` | no | Routine |
+| `phase_browser_test_passed` | no | Routine |
+| `phase_browser_test_failed` | yes | Real bug — user needs to see it before fix loop continues |
+| `phase_verify_step_failed` | yes | Test went red — fix loop incoming |
+| `bug_resolved` | yes | Three failed attempts before this is a different event (escalation) |
+| `bug_escalated` | yes | After 3 fix attempts on same bug — definitely need user |
+| `danger_blocked` | yes | Watchdog blocked something — user should review |
+| `auth_refresh_required` | yes | Cred-dependent step, user might need to enter creds |
+| `dev_server_start_failed` | yes | Infrastructure problem, not code |
+| `final_e2e_suite_emitted` | yes | End-of-run — user should review umbrella |
+
+### Behavior on pause
+
+When Cowork hits a paused event:
+1. Write a one-paragraph summary of WHAT just happened to chat (not the full transcript — the user is skimming).
+2. Show the relevant diff / artifact / log snippet (3-5 lines max).
+3. Wait for user OK before continuing. Don't auto-advance.
+
+### Behavior on non-paused events
+Update `STATUS.md` cumulatively. Don't ping the user in chat unless something surprising happened.
+
+### Overrides
+
+- `pause_at: []` — fully autonomous, only pause if the user @-mentions Cowork
+- `pause_at: ["*"]` — pause on every state event (verbose; use for debugging)
+- `pause_at: [<specific events>]` — custom list
+
+### Patterns I've seen
+
+- **First overnight run on a new project:** pause at all defaults — get used to the rhythm
+- **Familiar project, low-risk refactor:** drop `bug_resolved` and `dev_server_start_failed` to reduce interruptions
+- **Demo / live coding:** pause on every event so the audience sees the steps
+
+See also: `references/state_and_resume.md` for the full list of state events Cowork emits.
+
 ## When to stop
 
 Stop the autonomous run if:
