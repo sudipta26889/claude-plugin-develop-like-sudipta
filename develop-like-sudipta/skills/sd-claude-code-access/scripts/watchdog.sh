@@ -23,6 +23,12 @@ if ! command -v mktemp >/dev/null 2>&1 ; then
   exit 1
 fi
 DRYRUN="${WATCHDOG_DRYRUN:-0}"
+# v4.9 — default to safety-net-only. The watchdog only refuses danger
+# patterns; the manager (Cowork or human) decides every other prompt by
+# reading state.json's prompt_pending events. Set WATCHDOG_AUTO_APPROVE=1
+# for unattended autonomous runs (scheduled tasks, batch jobs) where no
+# manager is polling. See references/active_watcher.md for the model shift.
+AUTO_APPROVE="${WATCHDOG_AUTO_APPROVE:-0}"
 # Track the deny-source temp file at the script scope so the EXIT trap
 # can clean it up on SIGTERM/SIGINT or normal exit. Empty when no
 # temp file exists.
@@ -31,7 +37,7 @@ cleanup() {
   [ -n "$DENY_SRC" ] && rm -f "$DENY_SRC" 2>/dev/null
 }
 trap cleanup EXIT INT TERM
-echo "[$(date)] watchdog started, pid=$$, danger=$DANGER, extras_path=${EXTRA_PATH:-<none>}, dryrun=$DRYRUN, workspace=${WORKSPACE:-<unset>}" >>"$LOG"
+echo "[$(date)] watchdog started, pid=$$, danger=$DANGER, extras_path=${EXTRA_PATH:-<none>}, dryrun=$DRYRUN, auto_approve=$AUTO_APPROVE, workspace=${WORKSPACE:-<unset>}" >>"$LOG"
 last_seen=""
 PROMPT_PATTERN='Do you want to (proceed|make this edit|allow|continue|create|write|edit|delete|run)|^[[:space:]]*❯[[:space:]]*1\.[[:space:]]+(Yes|Continue|Allow|Proceed)'
 while true; do
@@ -121,17 +127,37 @@ while true; do
           fi
         fi
       else
-        echo "[$(date)] prompt fp=$fp - pressing return" >>"$LOG"
-        "$DEST/keys.sh" return >>"$LOG" 2>&1
-        if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
-          "$DEST/state.sh" "$WORKSPACE" prompt_approved "fp=$fp" >/dev/null 2>&1 || true
-        fi
-        # v4.3: surfaces of the actual prompt buffer — useful for spotting
-        # novel auto-approved phrases the autoresearch loop should learn.
-        if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
-          snippet_appr=$(echo "$buf" | tr '\n' ' ' | awk '{print substr($0,1,160)}' | iconv -c -t UTF-8//IGNORE 2>/dev/null || echo "")
-          "$DEST/learning.sh" "$WORKSPACE" permission_pattern \
-            "outcome=approved" "snippet=$snippet_appr" "fp=$fp" >/dev/null 2>&1 || true
+        if [ "$AUTO_APPROVE" = "1" ]; then
+          # Legacy / unattended path: press Enter on non-danger prompts.
+          # Used by scheduled tasks (ccbridge-propose-fix-pr, ...) where no
+          # manager is online to decide. Same v4.7 behavior as before v4.9.
+          echo "[$(date)] prompt fp=$fp - pressing return (auto_approve=1)" >>"$LOG"
+          "$DEST/keys.sh" return >>"$LOG" 2>&1
+          if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
+            "$DEST/state.sh" "$WORKSPACE" prompt_approved "fp=$fp" >/dev/null 2>&1 || true
+          fi
+          # v4.3: surfaces of the actual prompt buffer — useful for spotting
+          # novel auto-approved phrases the autoresearch loop should learn.
+          if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+            snippet_appr=$(echo "$buf" | tr '\n' ' ' | awk '{print substr($0,1,160)}' | iconv -c -t UTF-8//IGNORE 2>/dev/null || echo "")
+            "$DEST/learning.sh" "$WORKSPACE" permission_pattern \
+              "outcome=approved" "snippet=$snippet_appr" "fp=$fp" >/dev/null 2>&1 || true
+          fi
+        else
+          # v4.9 default: safety-net-only. DON'T press Enter. Emit a
+          # prompt_pending state event so the manager (Cowork or human)
+          # picks it up on the next state.json poll and decides what to do.
+          # Manager-decides model is the architectural pivot for /cc-monitor —
+          # see references/active_watcher.md.
+          snippet_pend=$(echo "$buf" | tr '\n' ' ' | awk '{print substr($0,1,200)}' | iconv -c -t UTF-8//IGNORE 2>/dev/null || echo "")
+          echo "[$(date)] prompt fp=$fp - safety-net mode (auto_approve=0), NOT pressing return; emitted prompt_pending" >>"$LOG"
+          if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
+            "$DEST/state.sh" "$WORKSPACE" prompt_pending "fp=$fp" "snippet=$snippet_pend" >/dev/null 2>&1 || true
+          fi
+          if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+            "$DEST/learning.sh" "$WORKSPACE" permission_pattern \
+              "outcome=pending" "snippet=$snippet_pend" "fp=$fp" >/dev/null 2>&1 || true
+          fi
         fi
       fi
       last_seen="$fp"
