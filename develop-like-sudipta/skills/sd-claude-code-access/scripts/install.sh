@@ -22,6 +22,10 @@ SCRIPTS=(
   # v4.8 — distill → CC writes fix → draft-PR pipeline. The dispatch table
   # is its own script so the dryrun + cap evals can exercise it in isolation.
   dispatch_signature.sh propose_fix_pr.sh
+  # v5.0 — cross-machine sync. The ccbridge-sync-learnings scheduled task
+  # calls $DEST/sync_learnings.sh by canonical bridge-dir path (same pattern
+  # as aggregate/distill — stable across plugin install location).
+  sync_learnings.sh
 )
 
 # v4.3 — bootstrap ccbridge data subdirs so learning.sh + register_project.sh
