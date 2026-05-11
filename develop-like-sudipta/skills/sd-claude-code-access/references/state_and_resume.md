@@ -72,6 +72,8 @@ state.json writes are append-only (`echo "$JSON" >> "$F"` in `state.sh`), but th
 
 The fix is `state_salvage.sh`, bundled alongside `state.sh`.
 
+> **Stop the watchdog before invoking salvage.** `state_salvage.sh` is atomic with respect to its own rename (TMP file is co-located with `state.json`), but it cannot prevent events appended by a concurrently-running watchdog or CC session from being dropped: the appender's open file descriptor points to the unlinked old inode after salvage runs, so any post-snapshot append is silently lost from the new file. In practice, salvage is invoked only when CC has crashed or stalled — but if you're salvaging while the watchdog is still alive, run `~/.cache/ccbridge/stop_watchdog.sh` first.
+
 ### When to invoke
 
 - `cc-resume` reports `.cc/state.json` is malformed (JSON parse failure, unexpected EOF, etc.).

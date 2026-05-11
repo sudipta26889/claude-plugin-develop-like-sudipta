@@ -1,7 +1,8 @@
 # develop-like-sudipta
 
-**Version:** 3.2.0
+**Version:** 3.3.0
 **Tagline:** Battle-tested development discipline for Claude Code — 11 engineering pillars, real-browser verification, bug-driven TDD, and substrate-aware end-to-end Claude Code driving from Cowork.
+**v3.3.0 (May 2026):** Tier 1 hardening — safer watchdog, accurate audit, recoverable state, refreshed docs.
 **Author:** Sudipta Dhara — [github.com/sudipta26889](https://github.com/sudipta26889)
 **Repository:** [claude-plugin-develop-like-sudipta](https://github.com/sudipta26889/claude-plugin-develop-like-sudipta)
 
@@ -25,7 +26,7 @@ v3.2 added substrate detection. Earlier versions silently assumed `bash` plus `o
 |---|---|
 | `develop-like-sudipta` | Routing hub for the 11 pillars; loads references progressively and delegates to agents and superpowers. |
 | `code-hacker` | Red-team auditor — 23 attack categories, files a breach report. Invoked via `/hack`. |
-| `sd-claude-code-access` | Drives Claude Code from Cowork end-to-end: substrate detection, file-based directives, watchdog, resume, per-phase browser verification, Playwright emission, audit retry. |
+| `sd-claude-code-access` | Drives Claude Code from Cowork end-to-end: substrate detection, file-based directives, watchdog, resume, per-phase browser verification, Playwright emission. v3.3 adds: per-project danger-pattern extensions via `<workspace>/.cc/danger_patterns_extra.txt`; watchdog dryrun mode via `WATCHDOG_DRYRUN=1` (logs "would-deny" without blocking); commit-lag-aware audit retry (`--retry N --retry-interval SEC`); watchdog refusal escalation to `.cc/escalations.log` + optional `ESCALATE_CMD` hook; `state.json` salvage via `state_salvage.sh` (recover from corrupted JSONL). |
 
 ### Slash commands
 
@@ -150,7 +151,12 @@ The plugin layers three things on top of Claude Code: (a) skills that load progr
 - **3.0** — bundled `sd-claude-code-access` skill: end-to-end Claude Code driving from Cowork. Added `/cc-drive`, `/cc-resume`, `/cc-send`, `/browser-test`, `/e2e-suite`, `/cc-audit`. Per-phase real-browser verification via Claude in Chrome MCP, Playwright spec emission into `docs/e2e-testing/`.
 - **3.1** — verify gate (static checks + unit/integration tests via auto-detected runner) MUST be green before browser-test. Bug-driven TDD protocol made mandatory — no fix without a failing test pair first. Added `/reproduce-bug` and `/fix`.
 - **3.2** — substrate detection. Every CC-driving session probes available MCPs and selects Path A (`Desktop_Commander`, preferred), Path B (`computer-use`, `request_access` for Terminal at tier `click`), or Path C (manual command surfacing). The chosen path and reason are reported before anything runs.
-- **3.3 (in progress)** — safety hardening. Danger-pattern audit and per-project extensions, commit-lag-aware audit retry, watchdog escalation on routine permission refusal, `state.json` salvage procedure. Doc refresh for the README and CC-driver prompts to match v3.2 reality.
+- **3.3.0** (2026-05-11) — Tier 1 hardening (4 user-visible gaps + 2 doc gaps closed):
+  - `feat(safety)` — danger-pattern audit + per-project extensions (`<workspace>/.cc/danger_patterns_extra.txt`) + dryrun mode (`WATCHDOG_DRYRUN=1`) (gap #1).
+  - `fix(audit)` — commit-lag-aware retry with `--retry`/`--retry-interval` flags so `audit.sh` no longer flags drift on healthy phases mid commit-hook (gap #2).
+  - `feat(safety)` — watchdog escalation on refused prompts: appends to `.cc/escalations.log` and fires optional `ESCALATE_CMD` hook (gap #3).
+  - `feat(state)` — `state.json` salvage script for corrupted JSONL recovery (`state_salvage.sh`) (gap #4).
+  - `docs(readme + prompts)` — README refreshed for v3.2/v3.3; CC-driver prompt drop-ins now lead with the Path A/B/C substrate detection clause (gaps #23 + #24).
 
 ---
 

@@ -377,6 +377,8 @@ Full playbook: [`references/managing_long_runs.md`](references/managing_long_run
 | `references/playwright_generation.md` | Emitting Playwright spec files from test markdown — selectors, assertions, fixtures, naming, idempotent overwrite rules. |
 | `references/verify_gate.md` | Auto-detection for static checks + project test runners (pytest/jest/vitest/cargo/go/maven), `.cc/config.json` schema, fail-fast semantics. |
 | `references/bug_driven_tdd.md` | The red-test-first protocol. Worked examples for unit-only, browser-only, and both-layer bugs. Anti-patterns. Audit checklist for "did they write the failing test first?" |
+| `references/danger_pattern_governance.md` | Adding/auditing a danger pattern, debugging a false positive, or wiring `WATCHDOG_DRYRUN`. |
+| `references/audit_timing.md` | Tuning `--retry`/`--retry-interval` for commit-hook lag, or diagnosing an audit that surfaces drift on healthy phases. |
 
 ## Quick reference card
 
