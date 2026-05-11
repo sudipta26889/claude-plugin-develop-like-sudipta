@@ -93,6 +93,74 @@ last_phase=<N>` event. The keepalive task (Phase 5) will self-disable both
 scheduled tasks on its next fire (this task does NOT disable itself directly —
 see "Don't" below).
 
+## Stop conditions (mandatory)
+
+Each fire evaluates these in order as a stop-then-decide cascade — at the first
+match, set the appropriate fields on `<workspace>/.cc/job-status.json` and exit
+the per-job loop for this job. The keepalive task (Phase 5) sweeps job-status
+and self-disables both scheduled tasks once every active job has stopped.
+
+### 1. `.cc/monitor.stop` kill switch (highest priority)
+
+If `<workspace>/.cc/monitor.stop` exists → IMMEDIATELY set:
+
+```
+{"done": false, "done_reason": "user_stop", "stopped_at": "<UTC>"}
+```
+
+…and exit. Check this BEFORE any other work in the job loop — no reading state,
+no buffer scan, no keystroke. The user touched the kill switch; honor it.
+
+### 2. `max_cycles`
+
+Increment `<workspace>/.cc/job-status.json` `.cycles` field by 1 each fire (the
+field is initialized to 0 by the orchestrator on first encounter of an active
+job). When `cycles >= max_cycles` (from `active-job.json`):
+
+```
+{"done": false, "done_reason": "max_cycles", "stopped_at": "<UTC>"}
+```
+
+…and exit. Belt-and-suspenders for `max_duration_hours` — a cron pause that
+hides time progression won't fool the cycle counter.
+
+### 3. `max_duration_hours`
+
+If `now - started_at > max_duration_hours * 3600` seconds:
+
+```
+{"done": false, "done_reason": "max_duration", "stopped_at": "<UTC>"}
+```
+
+…and exit. `started_at` comes from `active-job.json` (RFC-3339 UTC).
+
+### 4. `max_fix_attempts_per_cycle` + cooldown
+
+Track per-anomaly-category counters at `<workspace>/.cc/escalations/<category>.count`
+(plain integer in the file). Categories: `verify_red`, `browser_test_failure`,
+`bug_reproduction`, `manager_escalation`. After **3 consecutive failed
+fix-and-deploy cycles for the same category**:
+
+1. Run `bash ~/.cache/ccbridge/escalate.sh "$workspace"` with the failing
+   category and last 3 fix-attempt summaries.
+2. Write `<workspace>/.cc/orchestrator-cooldown-until` containing
+   `<UTC-ts of now + cooldown_minutes * 60>`. Default `cooldown_minutes = 30`;
+   read override from `active-job.json` if present.
+3. Set `{"blocked_on": "<category>", "cooldown_until": "<ts>"}` on job-status,
+   leave `done` untouched (this is a pause, not a stop).
+4. Exit this fire.
+
+Subsequent fires within the cooldown window: check `orchestrator-cooldown-until`
+first; if `now < ts`, log `cooldown_active category=<x>` and exit without
+incrementing `cycles`. After the window expires, the file is left in place as
+a run record (next category event overwrites it).
+
+### 5. Per-cycle wall-clock cap (`cycle_timeout_s`, default `25`)
+
+See the next section (`Per-fire wall-clock cap`). The constraint is the same;
+this entry just enumerates it alongside the other stop conditions so a future
+reader sees the full picture in one place.
+
 ## Per-fire wall-clock cap
 
 If the agent's reasoning crosses 25s within a single fire, abort the current
