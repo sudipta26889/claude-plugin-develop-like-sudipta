@@ -76,21 +76,51 @@ echo "[launch_cc] terminal app: $TERMINAL_APP" >&2
 echo "[launch_cc] launch flags: $CC_LAUNCH_FLAGS" >&2
 
 # ──────────────────────────────────────────────────────────────────────────
+# is_terminal_cc <pid>
+#   Returns 0 if PID is a TERMINAL-mode claude TUI (drivable via osascript
+#   keystrokes), 1 otherwise. Filters caught by field testing on M1 Max:
+#     - /Applications/Claude.app/Contents/MacOS/claude (Cowork-embedded CC)
+#     - ~/.cursor/extensions/.../claude-code/.../claude (Cursor IDE agent)
+#     - any claude with `--output-format stream-json` (IDE-agent telltale)
+#     - any claude without a controlling TTY (tty=`??` in `ps -o tty=`)
+# Real terminal CCs have tty like `ttys003` and don't use stream-json.
+# ──────────────────────────────────────────────────────────────────────────
+is_terminal_cc() {
+  local pid="$1"
+  local cmd; cmd=$(ps -o command= -p "$pid" 2>/dev/null || true)
+  [ -z "$cmd" ] && return 1
+  case "$cmd" in
+    */Claude.app/Contents/*) return 1 ;;
+    */.cursor/extensions/*claude-code*) return 1 ;;
+    *"--output-format stream-json"*) return 1 ;;
+  esac
+  local tty; tty=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ')
+  [ -n "$tty" ] && [ "$tty" != "??" ]
+}
+
+# ──────────────────────────────────────────────────────────────────────────
 # detect_cc_for_workspace <workspace_abs>
 #   Echoes PID of a terminal-mode claude whose cwd matches the workspace,
-#   or empty if none found. Filters out Cowork-embedded claudes.
+#   or empty if none found. Uses is_terminal_cc filter (see above).
 # ──────────────────────────────────────────────────────────────────────────
 detect_cc_for_workspace() {
   local target_ws="$1"
-  ps -axo pid=,command= 2>/dev/null \
-    | awk '$2 ~ /\/claude$/ && $2 !~ /Claude\.app\//' \
-    | while read -r pid rest; do
-        cwd=$(lsof -a -p "$pid" -d cwd 2>/dev/null | awk 'NR==2 {print $NF}' || true)
-        if [ -n "$cwd" ] && [ "$cwd" = "$target_ws" ]; then
-          echo "$pid"
-          return 0
-        fi
-      done | head -1
+  local found_pid=""
+  while IFS= read -r pid; do
+    [ -z "$pid" ] && continue
+    is_terminal_cc "$pid" || continue
+    local cwd; cwd=$(lsof -a -p "$pid" -d cwd 2>/dev/null | awk 'NR==2 {print $NF}' || true)
+    if [ -n "$cwd" ] && [ "$cwd" = "$target_ws" ]; then
+      found_pid="$pid"
+      break
+    fi
+  done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /\/claude$/ {print $1}')
+  # v4.5.1 — ALWAYS return 0 + echo (possibly empty). Otherwise the function's
+  # exit status (1 when found_pid is empty) propagates through $(...) and
+  # set -euo pipefail aborts the caller before it can fall into the spawn
+  # or --detect-only branch.
+  echo "$found_pid"
+  return 0
 }
 
 # ──────────────────────────────────────────────────────────────────────────

@@ -11,7 +11,33 @@ APP="${TERMINAL_APP:-Terminal}"
 DEST="${CCBRIDGE_DIR:-$HOME/.cache/ccbridge}"
 MSG="$(cat)"
 LEN=${#MSG}
-FRAG="$(printf '%s' "$MSG" | head -c 80 | tail -c 30)"
+
+# v4.5.1 — pick verification fragment from ASCII-only runs.
+# Why: pbcopy ⇄ osascript paste ⇄ Terminal scrollback can re-encode some
+# Unicode (em-dashes U+2014, smart quotes U+2018-201F, ellipsis U+2026, any
+# char above U+007E). Literal byte-level grep then false-negatives even
+# though the paste landed correctly. The fix is to pick the verification
+# fragment from a printable-ASCII-only stretch (chars in [!-~ ]).
+#
+# Algorithm: extract all maximal ASCII-printable runs of ≥15 chars, take
+# the longest one, slice up to 30 chars from its middle. Fall back to the
+# old "middle 30 of first 80" if no ASCII-only run of usable length exists.
+FRAG=$(printf '%s' "$MSG" \
+  | LC_ALL=C grep -oE '[!-~ ]{15,200}' 2>/dev/null \
+  | awk '{ print length, $0 }' \
+  | sort -rn \
+  | head -1 \
+  | cut -d' ' -f2- \
+  | awk '{
+      n = length($0)
+      if (n <= 30) print $0
+      else print substr($0, int((n-30)/2) + 1, 30)
+    }' \
+  | head -c 30)
+if [ -z "$FRAG" ]; then
+  # Fallback: legacy slice. Rarely reached — only if message is purely non-ASCII.
+  FRAG="$(printf '%s' "$MSG" | head -c 80 | tail -c 30)"
+fi
 printf '%s' "$MSG" | pbcopy
 /usr/bin/osascript <<APPLESCRIPT >/dev/null
 tell application "$APP" to activate

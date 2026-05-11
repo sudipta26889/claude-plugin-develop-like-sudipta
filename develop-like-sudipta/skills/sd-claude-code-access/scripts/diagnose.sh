@@ -25,9 +25,14 @@ echo
 echo "--- Terminal app ---"
 echo "TERMINAL_APP env: $TERM_APP"
 if osascript -e "tell application \"$TERM_APP\" to return (count of windows)" >/dev/null 2>&1; then
-  WIN=$(osascript -e "tell application \"$TERM_APP\" to return (count of windows)" 2>/dev/null)
-  TAB=$(osascript -e "tell application \"$TERM_APP\" to return (count of tabs of front window)" 2>/dev/null)
-  TITLE=$(osascript -e "tell application \"$TERM_APP\" to return name of selected tab of front window" 2>/dev/null)
+  # v4.5.1 — wrap each osascript in `|| echo "?"` so a single permission
+  # denial or transient AppleScript failure can't propagate out of $(...)
+  # and abort the script under set -euo pipefail. The if-guard above ONLY
+  # protects entry into the block; the inner calls each need their own
+  # fallback. Without this, diagnose.sh died silently mid-run on the M1 Max.
+  WIN=$(osascript -e "tell application \"$TERM_APP\" to return (count of windows)" 2>/dev/null || echo "?")
+  TAB=$(osascript -e "tell application \"$TERM_APP\" to return (count of tabs of front window)" 2>/dev/null || echo "?")
+  TITLE=$(osascript -e "tell application \"$TERM_APP\" to return name of selected tab of front window" 2>/dev/null || echo "<no-front-tab>")
   echo "  windows: $WIN, tabs in front window: $TAB"
   echo "  selected tab title: $TITLE"
   if [ "$WIN" != "1" ] || [ "$TAB" != "1" ]; then

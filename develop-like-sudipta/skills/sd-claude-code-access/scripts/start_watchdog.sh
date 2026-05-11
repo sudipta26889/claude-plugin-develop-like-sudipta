@@ -41,16 +41,24 @@ if [ -z "${WORKSPACE:-}" ]; then
   #   3. command line does NOT contain "--output-format stream-json" (also Cowork-internal)
   # If multiple terminal-mode CC processes match, head -1 picks the oldest —
   # typically the one the user actually launched in their Terminal tab.
-  # ps -axo emits PID + full command. Use awk on $2 (the executable path,
-  # i.e. argv[0]) — NOT anywhere in the command line. This avoids matching
-  # bash processes that happen to be running a script whose path contains
-  # the word "claude". Filters:
-  #   - $2 ends in /claude  → it's a Claude binary invocation
-  #   - $2 does NOT contain Claude.app/  → exclude Cowork-embedded CC
-  # Pick the LAST match (most recently started — typically the user's tab),
-  # not the first (which on macOS tends to be the longest-running instance).
-  CC_PID=$(ps -axo pid=,command= 2>/dev/null \
-    | awk '$2 ~ /\/claude$/ && $2 !~ /Claude\.app\// {pid=$1} END{print pid}')
+  # v4.5.1 — promoted to use the same is_terminal_cc filter as launch_cc.sh.
+  # Field feedback caught the filter regressions on M1 Max where Cursor's
+  # IDE-agent claude (under ~/.cursor/extensions/) and Cowork-embedded claudes
+  # were both incorrectly matching. Now also requires a real TTY (rules out
+  # any --output-format stream-json driver process).
+  CC_PID=""
+  while IFS= read -r _pid; do
+    [ -z "$_pid" ] && continue
+    _cmd=$(ps -o command= -p "$_pid" 2>/dev/null || true)
+    case "$_cmd" in
+      */Claude.app/Contents/*) continue ;;
+      */.cursor/extensions/*claude-code*) continue ;;
+      *"--output-format stream-json"*) continue ;;
+    esac
+    _tty=$(ps -o tty= -p "$_pid" 2>/dev/null | tr -d ' ')
+    [ -n "$_tty" ] && [ "$_tty" != "??" ] || continue
+    CC_PID="$_pid"   # keep iterating; last match wins (most recently spawned)
+  done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /\/claude$/ {print $1}')
   if [ -n "${CC_PID:-}" ]; then
     # macOS lsof: line 2 of `-d cwd` output's last column is the cwd path.
     # Wrap in `|| true` because lsof can exit non-zero on transient race with
