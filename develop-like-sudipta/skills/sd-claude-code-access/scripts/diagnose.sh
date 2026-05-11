@@ -93,5 +93,31 @@ if [ -n "$WS" ]; then
   echo "  Recent commits:"
   cd "$WS" 2>/dev/null && git log --oneline -5 2>/dev/null | sed 's/^/    /'
   echo
+  echo "--- .claude/settings.local.json ---"
+  # v4.6 H4 — surface malformed settings.local.json (claude --doctor refuses
+  # to start when this is broken) and stray ":*" inside permission rules
+  # (claude --doctor flags those too). Best-effort: errors must NEVER abort
+  # the diagnostic.
+  SLF="$WS/.claude/settings.local.json"
+  if [ ! -f "$SLF" ]; then
+    echo "  (none)"
+  else
+    if python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$SLF" 2>/dev/null; then
+      # JSON-valid. Count permission strings where `:*` appears NOT at the
+      # end-of-pattern. A trailing `:*` (e.g. "Bash(claude:*)") is fine
+      # because it sits immediately before the closing `)` or string-quote;
+      # `:*` followed by anything else (e.g. ":*:foo", ":*x") is the stray
+      # case `claude --doctor` flags.
+      STRAY=$(grep -oE ':\*[^)"]' "$SLF" 2>/dev/null | wc -l | tr -d ' ')
+      if [ "${STRAY:-0}" -gt 0 ] 2>/dev/null; then
+        echo "  ⚠ $STRAY rules with stray \":*\" pattern (claude --doctor will flag)"
+      else
+        echo "  ok"
+      fi
+    else
+      echo "  ⚠ MALFORMED JSON — claude --doctor will refuse"
+    fi
+  fi
+  echo
 fi
 echo "=== END DIAGNOSTIC ==="
