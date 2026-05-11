@@ -21,7 +21,7 @@ Run this once per machine after pulling/updating the `develop-like-sudipta` plug
 
 2. Calls `mcp__scheduled-tasks__list_scheduled_tasks` to inspect Cowork's current task registry.
 
-3. For each of the three required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`):
+3. For each of the four required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`, `cc-orchestrator`):
    - If NOT present → call `mcp__scheduled-tasks__create_scheduled_task` to register it with the recommended cron.
    - If present → call `mcp__scheduled-tasks__update_scheduled_task` to refresh the prompt from the latest SKILL.md (so plugin updates flow into Cowork without manual edits).
 
@@ -50,6 +50,7 @@ Call `mcp__scheduled-tasks__list_scheduled_tasks`. Look for entries with `taskId
 - `ccbridge-aggregate-learnings`
 - `ccbridge-distill-and-propose`
 - `ccbridge-propose-fix-pr`
+- `cc-orchestrator`
 
 ### Step 3 — Read the bundled SKILL.md as the source of truth
 
@@ -77,6 +78,11 @@ For each required task, read the SKILL.md from `~/Documents/Claude/Scheduled/<ta
 - Recommended cron: `0 9 * * 1` (every Monday at 09:00 local — runs after Sunday's distill, during waking hours so the maintainer sees draft PRs land in real time).
 - Otherwise identical pattern to above.
 
+**For `cc-orchestrator`:**
+
+- Recommended cron: `* * * * *` (every minute — re-spawning fresh each tick is the v5.0 L2 model). The task's Step 1 early-exits when no `<workspace>/.cc/active-job.json` exists, so the per-minute cadence is quota-safe on idle machines.
+- Otherwise identical pattern to above.
+
 ### Step 5 — Report
 
 Print a compact summary:
@@ -88,6 +94,7 @@ Print a compact summary:
   - ccbridge-aggregate-learnings — registered (next run: 2026-MM-DD HH:MM)
   - ccbridge-distill-and-propose — registered (next run: 2026-MM-DD HH:MM)
   - ccbridge-propose-fix-pr      — registered (next run: 2026-MM-DD HH:MM)
+  - cc-orchestrator              — registered (next run: 2026-MM-DD HH:MM, every minute)
 [ccbridge-init] done. The closed loop is now live on this machine.
 ```
 
