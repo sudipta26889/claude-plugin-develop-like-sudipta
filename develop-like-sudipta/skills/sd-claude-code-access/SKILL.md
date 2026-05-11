@@ -127,6 +127,68 @@ This skill captures methodology developed specifically for the Cowork↔CC bridg
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Modes
+
+The skill supports three operating modes. Pick the one that matches your use case; each
+maps to a different artifact pattern under `<workspace>/.cc/`.
+
+### Mode A — Greenfield phased build (default)
+
+**When:** building a new feature or shipping a planned change with a clear end state. The
+manager pre-writes the implementation plan in `docs/plans/<feature>.md`, breaks it into
+phase directives in `.cc/phase-1.md` ... `.cc/phase-N.md`, and triggers CC one phase at a
+time. CC executes each phase autonomously per the continuous-drive contract; manager polls
++ advances on `phase_complete`. Verify-gate + browser-test apply per phase.
+
+**Worked example artifacts:**
+- `docs/plans/2026-05-12-feature-x.md` (the plan)
+- `.cc/phase-1.md`, `.cc/phase-2.md`, ... (per-phase directives)
+- `docs/e2e-testing/phase-N-*.md` + `specs/phase-N.spec.ts` (per-phase browser tests)
+- Commits: feat/fix/docs with Conventional Commits prefix, one per task
+
+### Mode B — Monitor & escalate (SRE)
+
+**When:** keeping a running system healthy. "Watch this URL, tail prod logs over SSH, if
+you find a 500 → reproduce → fix → deploy → continue monitoring." The manager loops over
+observe → classify → decide → act → sleep cycles. CC is invoked PER discrete bug, not per
+feature. Phase numbering = bug ID (`bug-1.md`, `bug-2.md`, ...). Verify-gate + browser-test
+apply per fix.
+
+> **Status:** Mode B is the v5.0 work — see `/cc-monitor` command + `references/monitor_mode.md`
+> (both forward-pointers, landing in v5.0). Until those ship, drive Mode B manually by
+> writing `.cc/bug-<id>.md` directives one at a time.
+
+**Worked example artifacts:**
+- `.cc/monitor.json` (config: URL to probe, SSH host, log path, anomaly rules)
+- `.cc/monitor.jsonl` (one event per cycle: `monitor_cycle`)
+- `.cc/bugs/bug-<id>.md` (evidence + repro + fix directive, per anomaly)
+- `.cc/monitor/cycle-<N>-browser.json` + `cycle-<N>-logs.txt` (per-cycle captures)
+- Commits: `fix:` per resolved bug + `chore(monitor): cycle N heartbeat` for healthy cycles
+
+### Mode C — Single hotfix
+
+**When:** one urgent bug, no planning runway, jump to bug-driven TDD with one `.cc/fix-<slug>.md`.
+Skip the plan doc. Skip the multi-phase decomposition. CC writes the failing test FIRST
+(unit + browser if applicable), confirms red, applies the fix, confirms four greens.
+
+**Worked example artifacts:**
+- `.cc/fix-<slug>.md` (evidence + failing-test instructions + acceptance)
+- `.cc/bugs/<slug>.md` (the bug report, same template as Mode A/B)
+- Two commits: `test(...)` (red) + `fix(...)` (green)
+- Manager polls + emits `state.sh bug_resolved` on four-greens
+
+### Choosing between modes
+
+| Indicator | Pick |
+|---|---|
+| You have a plan doc with numbered phases | Mode A |
+| You're monitoring something that's already running in prod | Mode B |
+| You have one bug, want it fixed in under an hour | Mode C |
+| Mix of build + ongoing monitoring | Mode A for the build, switch to Mode B once shipped |
+
+All three modes share the same verify-gate + bug-driven TDD discipline. The differences are
+ONLY in artifact layout and triggering cadence — not in correctness rules.
+
 ## Pre-flight checklist (every new session)
 
 **Step 0 — Substrate detection (MANDATORY, before anything else).** Cowork's bash runs in a Linux sandbox; `osascript` only exists on macOS. The bundled bridge scripts must execute on the user's Mac. Detect which path is available:
