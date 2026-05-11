@@ -76,13 +76,15 @@ This restores the old single-shot semantics. It's also what the script does when
 
 ## What exit code 2 means now
 
-`audit.sh` previously exited 0 even when drift was found (the text report was the signal). With retry plumbing, the exit code carries information:
+`audit.sh` previously exited 0 even when drift was found (the text report was the signal). With retry plumbing, the exit code carries information — but with a back-compat caveat:
 
 - **0** — clean. Every expected commit-pattern entry resolved, every directive-mentioned file changed in the range.
-- **1** — hard error. Missing directive file, bad CLI args, can't `cd` to the workspace.
-- **2** — missing-file-or-commit (retryable drift). Returned when the only finding is files or commits that haven't landed yet. With `--retry N`, you only ever see this once the budget is fully spent.
+- **1** — hard error (missing directive file, bad CLI args, can't `cd` to the workspace) OR missing-file-or-commit drift when invoked WITHOUT `--retry` (legacy single-shot behaviour).
+- **2** — missing-file-or-commit (retryable drift). Returned **ONLY** when invoked with `--retry > 0`. With `--retry N`, you only ever see this once the budget is fully spent.
 
-The per-phase driver should treat exit 2 (post-retry) as a real drift event and route to the bug-found / fix-directive flow. Treat exit 1 as a tooling problem to fix in the driver, not the project under test.
+Exit code 2 is returned ONLY when invoked with `--retry > 0`; without retries, `audit.sh` keeps its prior exit 1 behaviour for back-compat. This means migrating callers must add `--retry 3 --retry-interval 2` (or larger) to opt into the new precision — a `case $? in 1) ...` legacy branch continues to fire on the no-flag path. New callers that want to distinguish "tooling broken" from "commit not landed yet" should pass `--retry` and branch on `1` vs `2`.
+
+The per-phase driver should treat exit 2 (post-retry) as a real drift event and route to the bug-found / fix-directive flow. Treat exit 1 as either a tooling problem (no `--retry` passed: ambiguous, inspect stderr) or — when `--retry` was passed — a hard error to fix in the driver, not the project under test.
 
 ## Anti-patterns
 

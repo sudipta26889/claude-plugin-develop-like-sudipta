@@ -228,8 +228,13 @@ while :; do
   # rc == 2: laggy drift. Retry if budget allows.
   remaining=$((max_attempts - attempt))
   if [ "$remaining" -le 0 ]; then
-    echo "[audit] retry budget exhausted ($RETRIES retries × ${INTERVAL}s) — surfacing drift" >&2
-    exit 2
+    if [ "$RETRIES" -gt 0 ]; then
+      echo "[audit] retry budget exhausted ($RETRIES retries × ${INTERVAL}s) — surfacing drift" >&2
+      exit 2
+    fi
+    # No-flag invocation: maintain legacy exit 1 for back-compat. No
+    # extraneous stderr — the report on stdout is the signal.
+    exit 1
   fi
   echo "[audit] retry $attempt/$RETRIES — sleeping ${INTERVAL}s (waiting for commit lag)" >&2
   sleep "$INTERVAL"
