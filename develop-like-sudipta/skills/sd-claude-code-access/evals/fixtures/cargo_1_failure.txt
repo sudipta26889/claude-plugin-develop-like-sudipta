@@ -1,0 +1,27 @@
+   Compiling cart v0.1.0 (/Users/dev/proj/cart)
+    Finished test [unoptimized + debuginfo] target(s) in 1.42s
+     Running unittests src/lib.rs (target/debug/deps/cart-9a8b7c6d5e4f3a2b)
+
+running 5 tests
+test tests::test_empty_cart ... ok
+test tests::test_add_item ... ok
+test tests::test_remove_item ... ok
+test tests::test_total_with_tax ... FAILED
+test tests::test_total_no_items ... ok
+
+failures:
+
+---- tests::test_total_with_tax stdout ----
+thread 'tests::test_total_with_tax' panicked at src/lib.rs:88:9:
+assertion `left == right` failed
+  left: 10.0
+ right: 11.0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::test_total_with_tax
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--lib`

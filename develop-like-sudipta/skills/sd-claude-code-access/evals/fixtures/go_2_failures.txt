@@ -1,0 +1,15 @@
+=== RUN   TestEmptyCart
+--- PASS: TestEmptyCart (0.00s)
+=== RUN   TestAddItem
+--- PASS: TestAddItem (0.00s)
+=== RUN   TestCalculateTotalWithTax
+    cart_test.go:42: total mismatch: got 10.00, want 11.00
+--- FAIL: TestCalculateTotalWithTax (0.00s)
+=== RUN   TestApplyDiscount
+    pricing_test.go:23: apply_discount(100, 15) returned nil, want 85.00
+--- FAIL: TestApplyDiscount (0.00s)
+=== RUN   TestRemoveItem
+--- PASS: TestRemoveItem (0.00s)
+FAIL
+exit status 1
+FAIL	github.com/dev/proj/cart	0.123s

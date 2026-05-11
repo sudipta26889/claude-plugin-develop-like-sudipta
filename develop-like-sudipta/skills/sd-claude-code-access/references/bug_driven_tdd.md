@@ -46,7 +46,7 @@ If any of 4a–4d red on the same fix → loop back to step 2 (the repro might b
 
 Goal: turn the raw failure into a portable artifact. Other humans (and future-you) will read this without context.
 
-Write `<workspace>/.cc/bugs/<bug-id>.md` using `assets/bug_report_template.md`. `<bug-id>` is `phase-<N>-bug-<short-slug>` — e.g. `phase-3-bug-cart-total-off-by-tax`.
+Run the failing test command and save raw output (stdout+stderr) to a file. Pipe that file through `scripts/parse_test_output.py` (see `references/test_output_parsing.md`) to get a structured JSON document with the failure's `file`, `line`, `assertion`, `expected`, `actual`, and verbatim `traceback` — the parser auto-detects pytest / jest / vitest / cargo / go / maven. The parsed fields map 1:1 to the "Captured evidence" section of `assets/bug_report_template.md`. If the parser returns empty `failures` (runner not recognized or output format changed), fall back to manual extraction. Write the capture into `<workspace>/.cc/bugs/<bug-id>.md` using `assets/bug_report_template.md`. `<bug-id>` is `phase-<N>-bug-<short-slug>` — e.g. `phase-3-bug-cart-total-off-by-tax`.
 
 Must include:
 - **Exact failing command** (the shell command that produced the red)

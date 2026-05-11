@@ -1,0 +1,34 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] -----------------------< com.example:cart-app >-----------------------
+[INFO] Building cart-app 1.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-surefire-plugin:3.0.0:test (default-test) @ cart-app ---
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.example.cart.CartTest
+[ERROR] Tests run: 4, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.123 s <<< FAILURE! - in com.example.cart.CartTest
+[ERROR] com.example.cart.CartTest.testCalculateTotalWithTax  Time elapsed: 0.012 s  <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <11.00> but was: <10.00>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:182)
+	at com.example.cart.CartTest.testCalculateTotalWithTax(CartTest.java:42)
+
+[INFO] Running com.example.cart.PricingTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.045 s -- in com.example.cart.PricingTest
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   CartTest.testCalculateTotalWithTax:42 expected: <11.00> but was: <10.00>
+[INFO]
+[ERROR] Tests run: 7, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------

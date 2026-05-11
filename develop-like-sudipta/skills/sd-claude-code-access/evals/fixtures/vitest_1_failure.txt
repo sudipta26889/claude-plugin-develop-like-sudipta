@@ -1,0 +1,33 @@
+ RUN  v1.2.1 /Users/dev/proj
+
+ ✓ src/utils/format.test.ts (4)
+ ❯ src/components/Cart.test.tsx (3)
+   ✓ Cart > renders empty state
+   ✓ Cart > renders items
+   ❯ Cart > applies tax to total
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/Cart.test.tsx > Cart > applies tax to total
+AssertionError: expected '$10.00' to be '$11.00' // Object.is equality
+
+- Expected
++ Received
+
+- $11.00
++ $10.00
+
+ ❯ src/components/Cart.test.tsx:40:31
+     38|     render(<Cart items={[{ price: 10 }]} taxRate={0.1} />);
+     39|     const total = screen.getByTestId('cart-total');
+     40|     expect(total.textContent).toBe('$11.00');
+       |                               ^
+     41|   });
+     42| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 6 passed (7)
+   Start at  14:32:11
+   Duration  843ms (transform 41ms, setup 0ms, collect 117ms, tests 32ms)

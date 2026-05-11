@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.7, pytest-7.4.3, pluggy-1.3.0
+rootdir: /Users/dev/proj
+plugins: anyio-4.0.0, cov-4.1.0
+collected 16 items
+
+tests/unit/test_cart.py .......                                          [ 43%]
+tests/unit/test_pricing.py .......                                       [ 87%]
+tests/unit/test_utils.py ..                                              [100%]
+
+============================== 16 passed in 0.31s ==============================

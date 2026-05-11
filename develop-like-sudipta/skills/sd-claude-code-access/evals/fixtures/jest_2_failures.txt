@@ -1,0 +1,37 @@
+PASS  src/utils/format.test.ts
+FAIL  src/components/Cart.test.tsx
+  ● Cart > displays total including tax
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "$11.00"
+    Received: "$10.00"
+
+      38 |     render(<Cart items={[{ price: 10 }]} taxRate={0.1} />);
+      39 |     const total = screen.getByTestId('cart-total');
+    > 40 |     expect(total.textContent).toBe('$11.00');
+         |                               ^
+      41 |   });
+      42 | });
+
+      at Object.<anonymous> (src/components/Cart.test.tsx:40:31)
+
+  ● Cart > shows error when items array is null
+
+    TypeError: Cannot read properties of null (reading 'length')
+
+      12 |   render(<Cart items={null} />);
+      13 |   const error = screen.getByRole('alert');
+    > 14 |   expect(error).toBeInTheDocument();
+         |                 ^
+      15 | });
+
+      at Object.<anonymous> (src/components/Cart.test.tsx:14:21)
+
+PASS  src/utils/math.test.ts
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       2 failed, 9 passed, 11 total
+Snapshots:   0 total
+Time:        1.847 s
+Ran all test suites.
