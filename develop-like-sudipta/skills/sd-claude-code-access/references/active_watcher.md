@@ -138,3 +138,91 @@ Don't:
   is per-fp; once you press a key, CC moves on, new fp on the next prompt. If
   you see the same fp twice, your action didn't take — investigate, don't
   re-fire.
+
+## Job spec (v5.0)
+
+The manager-decides model from the preceding sections is the *protocol*. The
+**job spec** is the *trigger* — a single file at `<workspace>/.cc/active-job.json`
+that switches a workspace from "dormant" to "the cc-orchestrator should attend
+this every minute." When the file is absent, the orchestrator's per-fire Step 1
+early-exits and no quota is spent.
+
+### Schema
+
+See [`assets/active-job.example.json`](../assets/active-job.example.json) for the
+canonical template. Required fields:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `job_id` | string | Stable id used in state events and the central learning tail. Convention: `<short-slug>-<YYYY-MM-DD>`. |
+| `started_at` | RFC-3339 UTC | When the job began. The orchestrator uses this to evaluate `max_duration_hours`. |
+| `plan_path` | repo-relative path | The implementation plan the orchestrator references when deciding next-phase directives. Manager-side, not consumed by CC directly. |
+| `max_duration_hours` | int | Wall-clock cap. Orchestrator marks `done` when exceeded (regardless of phase progress). |
+| `max_cycles` | int | Hard cap on orchestrator fires for this job (1 fire = 1 minute, so `1440` = 24h). Belt-and-suspenders for the duration cap. |
+| `done_criteria.phase_complete_min` | int | The phase number that, once `phase_complete` fires, signals the job is done. |
+| `done_criteria.browser_test_required` | bool | If `true`, the orchestrator requires a screenshot under `evidence_dir/phase-<N>-*.png` before flipping `done = true`. |
+| `done_criteria.evidence_dir` | repo-relative path | Where browser-test artifacts live. Default `docs/e2e-testing`. |
+
+Optional fields:
+
+| Field | Purpose |
+|---|---|
+| `notify_user_email` | If set, the keepalive task (Phase 5) emails this address on stall escalations / `job_complete`. |
+| `notify_slack_channel` | If set, the keepalive task posts to this channel on the same events. |
+
+### How `cc-orchestrator` consumes the spec
+
+Each fire (every minute via cron `* * * * *`):
+
+1. **Step 1 — discover** active jobs by globbing `~/Workspace/*/.cc/active-job.json`
+   (max depth 4). If none, exit. This is the only path that costs no quota.
+2. **Step 2 — drive** one cycle per active job: read state, read CC buffer,
+   decide (approve / deny / revise / advance / escalate / idle), keystroke
+   via `keys.sh`, update `orchestrator-heartbeat` + `job-status.json`.
+3. **Step 3 — done check** against `done_criteria`. Sets `job-status.done = true`
+   on match. The keepalive task (Phase 5) is the only thing allowed to disable
+   the orchestrator scheduled task itself.
+
+Full step-by-step contract lives in the bundled
+[`assets/scheduled-tasks/cc-orchestrator/SKILL.md`](../../../assets/scheduled-tasks/cc-orchestrator/SKILL.md)
+(copied to `~/Documents/Claude/Scheduled/cc-orchestrator/` by `/ccbridge-init`).
+
+### Starting a job
+
+```bash
+cp <plugin>/skills/sd-claude-code-access/assets/active-job.example.json \
+   <workspace>/.cc/active-job.json
+# edit job_id, started_at, plan_path, max_*, done_criteria
+```
+
+The next orchestrator fire (within ≤60 seconds) picks it up. No restart needed.
+
+### Stopping a job
+
+Two ways, both immediate:
+
+```bash
+rm <workspace>/.cc/active-job.json             # clean stop: orchestrator sees no job, exits Step 1
+touch <workspace>/.cc/monitor.stop             # kill switch: orchestrator marks done=true, then exits
+```
+
+Use `monitor.stop` when you want the job-status.json to record the explicit stop
+(so the keepalive task can fire a `job_aborted` notification). Use the `rm` when
+you've already grabbed the keyboard and the orchestrator's heartbeat is just
+noise.
+
+### Quota notes (from `research-continuous-cowork-2026-05-12.md`)
+
+- **Pro plan saturates** at sustained 1-minute cadence even with Step 1
+  early-exit if multiple jobs run concurrently. The orchestrator's reasoning
+  step (per-job, Step 2) is the cost driver — each fire is one Cowork turn.
+- **Max 5× is the recommended tier for 24/7** operation. The math: 1440
+  fires/day × ~1 turn each = 1440 turns/day; Max 5× absorbs that comfortably
+  for a single active job, with headroom for the other three ccbridge tasks
+  and the user's interactive sessions.
+- **Idle workspaces are free.** Step 1 globs `find ~/Workspace -name
+  active-job.json` (no Anthropic API call); when nothing is found, the agent
+  writes a one-line `idle` log and exits. The cron tick itself doesn't bill.
+- **Multiple active jobs are linear in cost.** If you have three workspaces
+  with active jobs, each fire consumes ~3× the per-job reasoning budget. Cap
+  the total active jobs to what your subscription can afford to keep healthy.
