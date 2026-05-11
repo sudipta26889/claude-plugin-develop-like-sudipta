@@ -20,6 +20,16 @@ set -euo pipefail
 DEST="${CCBRIDGE_DIR:-$HOME/.cache/ccbridge}"
 
 # Layer 1 — honor explicit env (back-compat).
+# v4.4 — auto-launch CC if explicit WORKSPACE is provided and no CC is yet
+# running for that workspace. Cheaper than detect-then-fail: spawn proactively
+# so the watchdog has something to monitor. Skipped when WORKSPACE is not set
+# (we'd have no idea WHICH project to launch for).
+if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/launch_cc.sh" ]; then
+  if ! "$DEST/launch_cc.sh" "$WORKSPACE" >/dev/null 2>&1; then
+    echo "[ccbridge] WARN: launch_cc.sh failed for WORKSPACE=$WORKSPACE — continuing anyway" >&2
+  fi
+fi
+
 if [ -z "${WORKSPACE:-}" ]; then
   # Layer 2 — auto-detect from a running Claude-Code-in-Terminal process.
   #

@@ -15,6 +15,8 @@ SCRIPTS=(
   escalate.sh
   # v4.3 — runtime-learning capture
   register_project.sh learning.sh
+  # v4.4 — auto-launch CC if not already running for the workspace
+  launch_cc.sh
 )
 
 # v4.3 — bootstrap ccbridge data subdirs so learning.sh + register_project.sh
