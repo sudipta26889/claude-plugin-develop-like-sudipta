@@ -21,7 +21,7 @@ Run this once per machine after pulling/updating the `develop-like-sudipta` plug
 
 2. Calls `mcp__scheduled-tasks__list_scheduled_tasks` to inspect Cowork's current task registry.
 
-3. For each of the four required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`, `cc-orchestrator`):
+3. For each of the five required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`, `cc-orchestrator`, `cc-coordinator-keepalive`):
    - If NOT present → call `mcp__scheduled-tasks__create_scheduled_task` to register it with the recommended cron.
    - If present → call `mcp__scheduled-tasks__update_scheduled_task` to refresh the prompt from the latest SKILL.md (so plugin updates flow into Cowork without manual edits).
 
@@ -51,6 +51,7 @@ Call `mcp__scheduled-tasks__list_scheduled_tasks`. Look for entries with `taskId
 - `ccbridge-distill-and-propose`
 - `ccbridge-propose-fix-pr`
 - `cc-orchestrator`
+- `cc-coordinator-keepalive`
 
 ### Step 3 — Read the bundled SKILL.md as the source of truth
 
@@ -83,6 +84,11 @@ For each required task, read the SKILL.md from `~/Documents/Claude/Scheduled/<ta
 - Recommended cron: `* * * * *` (every minute — re-spawning fresh each tick is the v5.0 L2 model). The task's Step 1 early-exits when no `<workspace>/.cc/active-job.json` exists, so the per-minute cadence is quota-safe on idle machines.
 - Otherwise identical pattern to above.
 
+**For `cc-coordinator-keepalive`:**
+
+- Recommended cron: `*/5 * * * *` (every five minutes — watchdog over the orchestrator). Detects stalls (orchestrator heartbeat > 7 min stale), escalates via Slack/email if `<ws>/.cc/active-job.json` has `notify_*` channels set, and self-disables both this task AND `cc-orchestrator` via `mcp__scheduled-tasks__update_scheduled_task enabled=false` once every active job has reached its `done_criteria`. Like `cc-orchestrator`, Step 1 early-exits on idle machines.
+- Otherwise identical pattern to above.
+
 ### Step 5 — Report
 
 Print a compact summary:
@@ -95,6 +101,7 @@ Print a compact summary:
   - ccbridge-distill-and-propose — registered (next run: 2026-MM-DD HH:MM)
   - ccbridge-propose-fix-pr      — registered (next run: 2026-MM-DD HH:MM)
   - cc-orchestrator              — registered (next run: 2026-MM-DD HH:MM, every minute)
+  - cc-coordinator-keepalive     — registered (next run: 2026-MM-DD HH:MM, every 5 minutes)
 [ccbridge-init] done. The closed loop is now live on this machine.
 ```
 
