@@ -55,4 +55,8 @@ echo "[ccbridge] installed to $DEST"
 echo "[ccbridge] /tmp/ccbridge -> $DEST (compat symlink)"
 echo
 echo "Quick health check:"
-"$DEST/diagnose.sh" 2>/dev/null | head -25
+# v4.3.4 — defensive SIGPIPE handling. `diagnose.sh | head -25` was causing
+# install.sh to exit non-zero (under set -euo pipefail) when diagnose.sh wrote
+# past 25 lines and got SIGPIPE'd by head's early exit. Wrap in `|| true` so
+# the install always reports success regardless of head's truncation behavior.
+"$DEST/diagnose.sh" 2>/dev/null | head -25 || true
