@@ -414,11 +414,40 @@ curl -sS -X POST "$PORTAINER_WEBHOOK_URL?pullImage=true"
 gh api -X POST /repos/<owner>/<repo>/actions/jobs/<redeploy_job_id>/rerun
 ```
 
-### Permanent fix
+### Permanent fix — depends on stack orchestrator
 
-Add `pull_policy: always` to every service in `portainer/stack-*.yml` (shown in the example above). Compose's `up -d` then re-pulls the `:latest` tag on every redeploy, regardless of whether the webhook explicitly requested it. **This is the cleanest cross-edition (CE+BE) solution** — it doesn't depend on which Portainer features your edition has.
+Critical caveat caught by 2026-05-11 field testing: **`pull_policy: always` is a Compose directive and is silently dropped by Docker Swarm.** A stack file containing `pull_policy: always` deployed to a Swarm-mode Portainer endpoint passes the YAML through unmolested (you can `docker cp` it back and see the directive on disk), but Swarm's `ContainerSpec` doesn't include the field — `docker service inspect <svc>` will show `Image: <ref>@sha256:<pinned>` with no `pull_policy`. The digest is pinned at deploy time; future redeploys with the same `:latest` reference don't re-resolve.
 
-Alternative for Portainer BE users: configure each stack's webhook to "Pull image on webhook trigger" in the UI. Removes the need for `pull_policy: always` but requires Portainer BE.
+#### Plain Docker Compose endpoints (`docker info | grep "Swarm: inactive"`)
+
+Add `pull_policy: always` to every service in `portainer/stack-*.yml` (shown in the example above). Compose's `up -d` re-pulls `:latest` on every redeploy.
+
+#### Docker Swarm endpoints (`docker info | grep "Swarm: active"`)
+
+Swarm needs `--resolve-image always` on the underlying `docker stack deploy` call. Three options:
+
+1. **Portainer BE: configure the stack webhook to add `--resolve-image always`.** Cleanest. Removes the need for any stack-file change.
+
+2. **Pin image by digest in the stack file (any Portainer edition).** Have CI update the stack file with the just-built digest after `docker push`, e.g.:
+   ```yaml
+   image: ghcr.io/<org>/<image>@sha256:${IMAGE_DIGEST}
+   ```
+   Where `IMAGE_DIGEST` comes from `docker buildx imagetools inspect` after the push. Stack file changes on every push → Swarm always detects a new service config → always recreates the task. Most production-correct but requires CI plumbing.
+
+3. **SHA-tagged images instead of `:latest` (any Portainer edition).** CI builds both `:latest` and `:<commit_sha>`; the stack file references `:${COMMIT_SHA}` via env substitution. Same forcing effect as #2 but uses tags instead of digests (slightly less precise — a tag CAN be moved).
+
+#### Both orchestrators
+
+Portainer UI → Stacks → `<stack>` → Editor → "Re-pull image and redeploy" → Update always works for both Compose and Swarm. Manual but reliable. Use this as the immediate-recovery route while one of the above permanent fixes is being implemented.
+
+#### Detection
+
+```bash
+# Detect which orchestrator the Portainer endpoint runs:
+docker info 2>/dev/null | grep -i "Swarm:"
+# Swarm: active   → use Swarm options above
+# Swarm: inactive → use plain Compose option
+```
 
 ### Acceptable use of `gh auth | ssh docker login` (DIAGNOSTIC ONLY)
 
