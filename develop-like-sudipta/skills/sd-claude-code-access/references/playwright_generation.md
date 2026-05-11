@@ -169,6 +169,19 @@ If a feature changes in a later phase (e.g. phase 3 renames a button that phase 
 
 Default to (1) for in-flight projects; use (2) only when the user explicitly wants per-phase historical snapshots.
 
+### Automated detection
+
+Run `scripts/regenerate_phase_specs.sh <workspace>` to scan all per-phase specs against their source markdowns. The script compares the spec's `// source-hash:` comment to the current SHA-256 of the markdown's `## Steps` section. Output:
+
+- **FRESH** — spec matches its source markdown
+- **STALE** — markdown's `## Steps` changed since spec was generated (re-run `/browser-test <phase>` to regenerate)
+- **MISSING_SPEC** — markdown exists but no spec yet (run `/browser-test <phase>` to create)
+- **ORPHAN_SPEC** — spec exists but no markdown (run `cleanup_test_artifacts.sh` to quarantine)
+
+Exit code 1 if any drift detected — wire into CI as a pre-flight check.
+
+(v1: report-only. `--apply` flag is reserved for future auto-regen via dispatched browser-test runs.)
+
 ## CI integration hint
 
 After the run, leave a `docs/e2e-testing/RUNNING.md` with:
