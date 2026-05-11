@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "ts": "2026-05-11T12:23:34Z",
+    "target_hash": "44ace87bce9a3b02f2d4584b1706613d771b41c84d6ffe62bb92a04558e74dcb",
+    "score": 0.8571,
+    "accepted": true,
+    "baseline_before": 0.7778,
+    "hypothesis": "add hang/stuck/minutes/slash/interrupt vocabulary for Q3 recovery"
+  },
+  {
+    "ts": "2026-05-11T12:24:40Z",
+    "target_hash": "007ab5f370f3e23b29bfc3008f0feb2446f70de618fee5bdd56125cb93100a7e",
+    "score": 0.9091,
+    "accepted": true,
+    "baseline_before": 0.8571,
+    "hypothesis": "add eval-harness/dataset/fixture/pending vocabulary for Q7"
+  },
+  {
+    "ts": "2026-05-11T12:25:08Z",
+    "target_hash": "c18abb98bf83e21d9711eca8398921299cd82f5f59a856a1f1f846d5420359b1",
+    "score": 0.9524,
+    "accepted": true,
+    "baseline_before": 0.9091,
+    "hypothesis": "drop FP Q15 by removing 'sessions' plural and 'first' from desc"
+  },
+  {
+    "ts": "2026-05-11T12:26:02Z",
+    "target_hash": "b40bf02257d160ea6310d53d43b238b41fb6e7144532fbb555091e49daa5bb78",
+    "score": 1.0,
+    "accepted": true,
+    "baseline_before": 0.9524,
+    "hypothesis": "remove 'json' token from desc to drop FP Q18 (pytest allowlist)"
+  }
+]
