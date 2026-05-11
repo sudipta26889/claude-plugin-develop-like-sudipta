@@ -1,0 +1,22 @@
+[
+  {"query": "I have a 16-phase implementation plan in docs/plans/2026-05-08-rotmg-qa-tracker-implementation.md and Claude Code is running in my Terminal session over SSH to my workstation. I'm heading into a meeting in 5 minutes — can you drive Claude Code through the whole plan while I'm away and have STATUS.md ready when I'm back? Auto-approve dev permission prompts, write phase directives, and check git log between phases.", "should_trigger": true},
+  {"query": "Phase 4 just finished in CC — pytest is green, all 6 commits landed, the checkpoint summary mentions clock_timestamp() in the round-robin code. Approve and trigger Phase 5 using my preferences from .cc/phase-5.md", "should_trigger": true},
+  {"query": "CC has been stuck for 20 minutes. Same time-elapsed counter, no new commits, token upload counter not moving. The slash command implementation should have committed by now. Help me unstick it.", "should_trigger": true},
+  {"query": "ok so claude code is in a terminal tab on this mac and i want you to just send it the next instructions instead of me copy pasting every time. its running in my main project folder", "should_trigger": true},
+  {"query": "send this to claude code: Approved Phase 9. Read .cc/phase-10.md and proceed to Phase 10 — Frontend (React + Vite). Stop and present a checkpoint after each commit per the directive.", "should_trigger": true},
+  {"query": "i'm running a long autonomous claude code session for my saas project tonight, can you watch the terminal and approve any 'do you want to proceed' prompts so i can sleep, also wake me up if anything actually breaks", "should_trigger": true},
+  {"query": "tell CC to start phase 12 — the eval harness one — and remind it that Saurabh's dataset isn't ready yet so it should ship the schema + 20-row example fixture and exit-code-2 PENDING in the runner", "should_trigger": true},
+  {"query": "set up the bridge so cowork can talk to my claude code session in iTerm. once that's working drive it through the implementation plan one phase at a time, stopping at each checkpoint", "should_trigger": true},
+  {"query": "audit phase 7 — read .cc/phase-7.md against the last 5 commits and tell me if anything in the directive didn't actually get implemented. CC said it was done but i'm suspicious", "should_trigger": true},
+  {"query": "Claude Code is hung again on a pytest call inside docker. Press Esc to interrupt and have it skip the slow integration tests for the rest of the phase, then continue the run.", "should_trigger": true},
+  {"query": "what's a good vacation spot in greece in late september", "should_trigger": false},
+  {"query": "write a bash script that finds all .png files in ~/Downloads larger than 5MB and moves them to an archive folder organized by month", "should_trigger": false},
+  {"query": "review my python code below and tell me if there's a bug in the round-robin assignment query — i think SELECT FOR UPDATE SKIP LOCKED is wrong here", "should_trigger": false},
+  {"query": "explain how SSE event broadcasting works with postgres LISTEN/NOTIFY in a multi-instance Cloud Run setup. I'm reading a design doc and don't understand the cross-instance fanout part.", "should_trigger": false},
+  {"query": "draft a slack message to my QA lead saying we'll need 200 anonymized bug reports for the eval gate. keep it short, tone is professional but warm", "should_trigger": false},
+  {"query": "i'm building a small fastapi app and i want claude to write the first version. just go ahead and create it, no need to do anything fancy with sessions or tools", "should_trigger": false},
+  {"query": "claude please update my resume — add a bullet about leading the qa tracker project at deca games, mention the slack bot + react dashboard + cloud run deploy", "should_trigger": false},
+  {"query": "what's the difference between asyncio.gather with return_exceptions=True vs without? trying to figure out which to use in my crawler", "should_trigger": false},
+  {"query": "my claude code keeps asking me to approve every pytest invocation even though i added it to the allowlist in .claude/settings.local.json. how do i make it stop?", "should_trigger": false},
+  {"query": "git rebase tutorial please — i have 12 commits on a feature branch and i want to squash them into 3 logical groups before opening the PR", "should_trigger": false}
+]

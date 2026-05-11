@@ -1,0 +1,46 @@
+{
+  "_comment": "Drop a copy of this at <workspace>/.cc/config.json (without the _comment fields) to override auto-detection. All fields are optional — auto-detection covers most projects.",
+
+  "dev_server_url": "http://localhost:5173",
+  "_comment_dev_server_url": "Used by /browser-test to find the running app. Falls back to: env DEV_SERVER_URL → package.json scripts → framework config files → :3000.",
+
+  "browser_test_root": "docs/e2e-testing",
+  "_comment_browser_test_root": "Where per-phase test markdown + Playwright specs are emitted. Relative to workspace root. Default: 'docs/e2e-testing'.",
+
+  "browser_test_allow_remote": false,
+  "_comment_browser_test_allow_remote": "If true, allow targeting non-localhost URLs (staging). Default false — refuses to run against remote without explicit opt-in.",
+
+  "static": [
+    "ruff check .",
+    "mypy backend/",
+    "eslint frontend/ --max-warnings 0",
+    "tsc -p frontend/tsconfig.json --noEmit"
+  ],
+  "_comment_static": "Static checks run BEFORE unit tests in the verify gate. Each command runs in workspace root. Fail-fast on first non-zero exit.",
+
+  "test_commands": [
+    "pytest -x --cov=backend --cov-fail-under=80 --tb=short",
+    "npm --prefix frontend test -- --run"
+  ],
+  "_comment_test_commands": "Unit + integration test commands. Run AFTER static, before browser-test. Fail-fast. Override auto-detection.",
+
+  "coverage_min": 80,
+  "_comment_coverage_min": "Minimum total coverage % required. Enforced if a test command emits a coverage summary. Default: 0 (no enforcement).",
+
+  "skip_tests_on": ["docs:", "chore:", "ci:"],
+  "_comment_skip_tests_on": "Phases whose directive starts with one of these conventional-commits prefixes can skip the test stage. Use sparingly. Default: [].",
+
+  "skip_static_on": [],
+  "_comment_skip_static_on": "Same as skip_tests_on but for static checks. Default: []",
+
+  "auth": {
+    "storage_state_path": ".cc/auth/storage-state.json",
+    "login_flow_path": ".cc/auth/login_flow.md",
+    "env_user_var": "E2E_USER",
+    "env_pass_var": "E2E_PASS"
+  },
+  "_comment_auth": "Persistent browser session for auth-gated apps. login_flow_path is a markdown describing the one-time login (Cowork drives it once, persists state). Env vars hold the actual credentials (never commit them).",
+
+  "browser_test_excluded_phases": [],
+  "_comment_browser_test_excluded_phases": "Phase numbers that have no user-visible surface (pure backend migration, internal refactor). Skipped from browser-test step. Still logged with phase_browser_test_skipped reason='no-ui-surface'."
+}

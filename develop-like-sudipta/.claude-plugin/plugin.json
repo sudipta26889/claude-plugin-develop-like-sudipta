@@ -1,10 +1,29 @@
 {
   "name": "develop-like-sudipta",
-  "description": "Battle-tested development discipline plugin. Enforces 11 engineering pillars via skills, agents, hooks, and commands. Works WITH superpowers plugin. Sources: Google SRE, DORA, OWASP, Fowler, Thoughtworks.",
-  "version": "2.1.1",
+  "description": "Battle-tested development discipline plugin. Enforces 11 engineering pillars via skills, agents, hooks, and commands. v3.2 adds substrate detection — every CC-driving session starts by probing which MCPs are available (Desktop_Commander preferred, computer-use fallback with request_access for Terminal at tier 'click', manual as last resort) and surfaces the chosen path to the user before driving anything; the previous versions silently assumed bash + osascript would reach the Mac. v3.1 mandates a verify gate (static checks + unit/integration tests via pytest/jest/vitest/cargo/go-test/etc., auto-detected per project) before browser-test; opens Claude in Chrome only when unit tests are green. When ANY test goes red — unit or browser — bug-driven TDD kicks in: write a NEW failing pytest case AND a NEW failing Playwright step that both reproduce the bug, confirm both red, send the fix directive to CC, then confirm green on the new unit test, the new browser test, the full verify-gate (regression guard), and the original phase test. No fix lands without a failing test first. Bundles the sd-claude-code-access skill — drive Claude Code from Cowork end-to-end with file-based directives, permission-prompt watchdog, hang recovery, resume-after-crash, per-phase real-browser verification, Playwright spec emission into the project's docs/e2e-testing/, and audit tooling to verify the discipline was followed. Works WITH superpowers plugin. Sources: Google SRE, DORA, OWASP, Fowler, Thoughtworks.",
+  "version": "3.2.0",
   "author": {
     "name": "Sudipta Dhara",
     "url": "https://github.com/sudipta26889"
   },
-  "repository": "https://github.com/sudipta26889/claude-plugin-develop-like-sudipta"
+  "repository": "https://github.com/sudipta26889/claude-plugin-develop-like-sudipta",
+  "keywords": [
+    "development",
+    "discipline",
+    "claude-code",
+    "cowork",
+    "browser-testing",
+    "playwright",
+    "pytest",
+    "verify-gate",
+    "bug-driven-tdd",
+    "substrate-detection",
+    "desktop-commander",
+    "computer-use",
+    "e2e",
+    "owasp",
+    "sre",
+    "tdd",
+    "ci-cd"
+  ]
 }

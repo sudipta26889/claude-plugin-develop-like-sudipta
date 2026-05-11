@@ -1,0 +1,35 @@
+{
+  "skill_name": "sd-claude-code-access",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a 16-phase implementation plan in docs/plans/2026-05-08-foo-implementation.md and Claude Code is running in my Terminal. I'm heading into a meeting in 5 minutes — can you drive Claude Code through the whole plan while I'm out and have STATUS.md ready when I'm back? Auto-approve dev permission prompts, write phase directives in markdown, and check git log between phases to verify what got committed.",
+      "expected_output": "Skill should trigger. Cowork should: install bridge scripts, start watchdog, pre-write phase directives, send tiny triggers, poll at 60-180s, generate STATUS.md, document blockers.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Phase 4 is done in CC — pytest is green, all 6 commits landed, the checkpoint summary mentions clock_timestamp() instead of now() in round-robin. Approve and trigger Phase 5. Phase 5 should use my preferences from .cc/phase-5.md which I already wrote.",
+      "expected_output": "Skill should trigger. Cowork should: read git log + diff for Phase 4 commits, audit against .cc/phase-4.md if it exists, send a 1-line approval+next-trigger message via send.sh, monitor for next checkpoint.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "CC has been stuck for 20 minutes. Same time-elapsed counter, no new commits, token upload counter not moving. The slash command implementation should have committed by now. Help.",
+      "expected_output": "Skill should trigger. Cowork should: confirm hang via read.sh + git log, press Esc via keys.sh, check what CC's current operation was (likely the lint+test+commit chain hung on something), send a clarifying nudge (e.g., 'fix the F841 lint error in the test file then continue').",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "What's a quick pasta recipe?",
+      "expected_output": "Skill should NOT trigger — unrelated to driving Claude Code.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Write a bash script that copies all .png files from ~/Downloads to ~/Pictures/screenshots",
+      "expected_output": "Skill should NOT trigger — this is a normal bash task, no CC orchestration needed.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+# danger_patterns.txt - regexes the watchdog refuses to auto-approve.
+# One regex per line. Lines starting with # are comments. Case-insensitive.
+# These are extended-regex (ERE) patterns suitable for grep -E.
+#
+# Format: each line is a regex. If ANY line matches the visible buffer
+# around the prompt, watchdog logs LOUDLY and refuses to press Enter -
+# user must manually intervene. Defense in depth against CC executing
+# something destructive without anyone watching.
+
+# Filesystem destruction
+\brm[[:space:]]+(-[a-z]*r[a-z]*[fF]?|-[a-z]*[fF][a-z]*r)\b
+\bsudo[[:space:]]+rm\b
+\bdd[[:space:]]+if=/dev/(zero|random|urandom)\b
+\bmkfs\b
+\bshred[[:space:]]+(-[a-z]*[uvz])
+\btruncate[[:space:]]+-s[[:space:]]+0\b
+
+# Git history destruction
+\bgit[[:space:]]+reset[[:space:]]+--hard\b
+\bgit[[:space:]]+clean[[:space:]]+-([a-z]*f[a-z]*d|[a-z]*d[a-z]*f)\b
+\bgit[[:space:]]+push[[:space:]]+(--force|-f)\b
+\bgit[[:space:]]+filter-(branch|repo)\b
+\bgit[[:space:]]+branch[[:space:]]+-D\b
+
+# Cloud destruction
+\bgcloud[[:space:]]+.*\bdelete\b
+\bgcloud[[:space:]]+sql[[:space:]]+instances[[:space:]]+delete\b
+\baws[[:space:]]+.*\b(delete-|terminate-)
+\bterraform[[:space:]]+destroy\b
+\bkubectl[[:space:]]+delete[[:space:]]+(ns|namespace|pv|pvc)\b
+
+# Database destruction
+\bDROP[[:space:]]+(TABLE|DATABASE|SCHEMA|INDEX)\b
+\bTRUNCATE[[:space:]]+TABLE\b
+\bDELETE[[:space:]]+FROM[[:space:]]+[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*;
+
+# Docker destruction
+\bdocker[[:space:]]+system[[:space:]]+prune\b
+\bdocker[[:space:]]+volume[[:space:]]+rm\b
+\bdocker[[:space:]]+(rm|rmi)[[:space:]]+(-f|--force)\b
+
+# Network / system level
+\bsudo[[:space:]]+(shutdown|reboot|halt|poweroff)\b
+\bnpm[[:space:]]+publish\b
+\bcurl[[:space:]]+.*[[:space:]]*\|[[:space:]]*(sudo[[:space:]]+)?(bash|sh|zsh)\b
+
+# Secrets exfiltration smell
+\b(echo|cat|printenv).*\b(SECRET|PASSWORD|TOKEN|API_KEY).*[[:space:]]*[|>]
