@@ -33,7 +33,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 echo "[$(date)] watchdog started, pid=$$, danger=$DANGER, extras_path=${EXTRA_PATH:-<none>}, dryrun=$DRYRUN, workspace=${WORKSPACE:-<unset>}" >>"$LOG"
 last_seen=""
-PROMPT_PATTERN='Do you want to (proceed|make this edit|allow|continue)'
+PROMPT_PATTERN='Do you want to (proceed|make this edit|allow|continue|create|write|edit|delete|run)|^[[:space:]]*❯[[:space:]]*1\.[[:space:]]+(Yes|Continue|Allow|Proceed)'
 while true; do
   buf=$("$DEST/read.sh" 2>/dev/null | tail -50)
   if echo "$buf" | grep -qE "$PROMPT_PATTERN" ; then
