@@ -11,9 +11,15 @@
 \brm[[:space:]]+(-[a-z]*r[a-z]*[fF]?|-[a-z]*[fF][a-z]*r)\b
 \bsudo[[:space:]]+rm\b
 \bdd[[:space:]]+if=/dev/(zero|random|urandom)\b
+\bdd[[:space:]]+if=\b
 \bmkfs\b
 \bshred[[:space:]]+(-[a-z]*[uvz])
 \btruncate[[:space:]]+-s[[:space:]]+0\b
+# Writing to raw block devices ("> /dev/sda", "> /dev/disk0") — catastrophic
+[[:space:]]>[[:space:]]*/dev/(sd[a-z][0-9]*|nvme[0-9]+n[0-9]+|disk[0-9]+|hd[a-z])
+# Recursive permission flips on real paths (chmod/chown -R)
+\bchmod[[:space:]]+-[a-zA-Z]*R[a-zA-Z]*[[:space:]]+[0-7]+[[:space:]]+/(etc|var|usr|bin|sbin|opt|root|home)\b
+\bchown[[:space:]]+-[a-zA-Z]*R[a-zA-Z]*[[:space:]]+[a-zA-Z0-9_.:-]+[[:space:]]+/(etc|var|usr|bin|sbin|opt|root|home)\b
 
 # Git history destruction
 \bgit[[:space:]]+reset[[:space:]]+--hard\b
@@ -25,7 +31,10 @@
 # Cloud destruction
 \bgcloud[[:space:]]+.*\bdelete\b
 \bgcloud[[:space:]]+sql[[:space:]]+instances[[:space:]]+delete\b
+\bgcloud[[:space:]]+projects[[:space:]]+delete\b
 \baws[[:space:]]+.*\b(delete-|terminate-)
+# `aws s3 rb` — remove bucket (often with --force); destructive even without delete-
+\baws[[:space:]]+s3[[:space:]]+rb\b
 \bterraform[[:space:]]+destroy\b
 \bkubectl[[:space:]]+delete[[:space:]]+(ns|namespace|pv|pvc)\b
 
@@ -42,7 +51,12 @@
 # Network / system level
 \bsudo[[:space:]]+(shutdown|reboot|halt|poweroff)\b
 \bnpm[[:space:]]+publish\b
+# Supply-chain smell — piping a network download straight into a shell
 \bcurl[[:space:]]+.*[[:space:]]*\|[[:space:]]*(sudo[[:space:]]+)?(bash|sh|zsh)\b
+\bwget[[:space:]]+.*[[:space:]]*\|[[:space:]]*(sudo[[:space:]]+)?(bash|sh|zsh)\b
+# Shell-eval smell — eval-of-untrusted, or base64-decode piped to shell
+\beval[[:space:]]+["']?\$\(
+\bbase64[[:space:]]+(-d|--decode)[[:space:]]+.*\|[[:space:]]*(bash|sh|zsh)\b
 
 # Secrets exfiltration smell
 \b(echo|cat|printenv).*\b(SECRET|PASSWORD|TOKEN|API_KEY).*[[:space:]]*[|>]
