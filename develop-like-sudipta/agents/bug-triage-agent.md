@@ -86,6 +86,23 @@ routing a real bug into the flake whitelist hides a regression. Be conservative
 `/reproduce-bug <test_name>` | `<edit flake_whitelist>` | `<dispatch env-sync-checker>`
 ```
 
+## v4.3 — emit learning event
+
+After you finish the classification, before returning, run (best-effort, ignore failure):
+
+```bash
+SCRIPTS="${CLAUDE_PLUGIN_ROOT:-.claude/plugins/develop-like-sudipta}/skills/sd-claude-code-access/scripts"
+"$SCRIPTS/learning.sh" "$WORKSPACE" bug_triage \
+  "test=<test_name>" \
+  "classification=<one of FLAKE_KNOWN|FLAKE_SUSPECTED|REAL_BUG|SPEC_PROBLEM|ENV_PROBLEM>" \
+  "confidence=<high|medium|low>" \
+  "signature=<failure_signature truncated to 160 chars>"
+```
+
+Why: every classification is a labeled data point the autoresearch loop can use later —
+to fine-tune the triage heuristics, expand the trigger evals, or surface novel signatures
+that the current classifier mis-routes.
+
 ## Anti-patterns
 
 - DO NOT apply a fix. You recommend; the primary agent acts.

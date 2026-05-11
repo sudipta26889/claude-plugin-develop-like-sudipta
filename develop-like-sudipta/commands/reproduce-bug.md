@@ -72,3 +72,28 @@ If any of 4a–4d red → loop back to step 2 with the new failure as evidence. 
 - **Don't delete the repro tests after the fix lands.** They are the regression guard.
 - **Don't claim resolved without 4c.** A green-on-the-new-test fix that breaks something else is not a fix.
 - **Don't escalate before 3 attempts** — but DO escalate after 3.
+
+## v4.3 — emit bug_reproduction learning
+
+After step 2 (failing tests seeded, both red as expected):
+
+```bash
+SCRIPTS="${CLAUDE_PLUGIN_ROOT}/skills/sd-claude-code-access/scripts"
+"$SCRIPTS/learning.sh" "$WORKSPACE" bug_reproduction \
+  "test_name=<failing_test>" \
+  "stage=seeded" \
+  "tier=<unit|browser|both>"
+```
+
+After step 4 (all four greens — repro unit, repro browser, full verify, original phase):
+
+```bash
+"$SCRIPTS/learning.sh" "$WORKSPACE" bug_reproduction \
+  "test_name=<failing_test>" \
+  "stage=resolved" \
+  "attempts=<N>" \
+  "fix_loc=<file:line of the production fix>"
+```
+
+These pairs (seeded → resolved) form the canonical bug-driven TDD trajectory that
+autoresearch can replay to refine the protocol's directive language.

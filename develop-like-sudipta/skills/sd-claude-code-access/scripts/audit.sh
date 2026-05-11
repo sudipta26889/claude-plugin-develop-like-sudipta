@@ -315,15 +315,32 @@ while :; do
   rc=$?
   set -e
   if [ "$rc" -eq 0 ]; then
+    # v4.3: capture clean-audit signal so autoresearch can compare frequency
+    # of clean vs drift outcomes across projects.
+    DEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+      "$DEST/learning.sh" "$WORKSPACE" audit_finding \
+        "outcome=clean" "attempts=$attempt" >/dev/null 2>&1 || true
+    fi
     exit 0
   fi
   if [ "$rc" -ne 2 ]; then
     # Hard error from do_audit — pass it through unchanged.
+    DEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+      "$DEST/learning.sh" "$WORKSPACE" audit_finding \
+        "outcome=hard_error" "rc=$rc" "attempts=$attempt" >/dev/null 2>&1 || true
+    fi
     exit "$rc"
   fi
   # rc == 2: laggy drift. Retry if budget allows.
   remaining=$((max_attempts - attempt))
   if [ "$remaining" -le 0 ]; then
+    DEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+      "$DEST/learning.sh" "$WORKSPACE" audit_finding \
+        "outcome=drift" "attempts=$attempt" "retries=$RETRIES" >/dev/null 2>&1 || true
+    fi
     if [ "$RETRIES" -gt 0 ]; then
       echo "[audit] retry budget exhausted ($RETRIES retries × ${INTERVAL}s) — surfacing drift" >&2
       exit 2

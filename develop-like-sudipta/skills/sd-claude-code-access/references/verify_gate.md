@@ -170,3 +170,28 @@ When a command fails:
 ```
 
 This is the input to step 1 (Capture) of the bug-found protocol — see `bug_driven_tdd.md`.
+
+## v4.3 — learning emission on red
+
+When the gate goes red, in addition to writing the bug report, emit a learning event so
+autoresearch can sweep verify-failures across all projects:
+
+```bash
+SCRIPTS="$(dirname "$0")"  # or absolute path to scripts/
+"$SCRIPTS/learning.sh" "$WORKSPACE" verify_red \
+  "tier=<static|tests|coverage>" \
+  "command=<the failing shell command>" \
+  "exit_code=<N>" \
+  "phase=<current phase>" \
+  "assertion=<extracted assertion or first failing test name>"
+```
+
+On green, emit:
+
+```bash
+"$SCRIPTS/learning.sh" "$WORKSPACE" verify_red \
+  "outcome=green" "phase=<N>" "duration_s=<elapsed>"
+```
+
+(The `verify_red` category is reused for both red and green outcomes — the `outcome` key
+disambiguates. This keeps the central tail tidy: one category per gate event.)

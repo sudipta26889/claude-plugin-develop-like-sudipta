@@ -68,3 +68,20 @@ Apply `references/bug_driven_tdd.md` strictly:
 - Don't run against production. Default to localhost; staging requires `BROWSER_TEST_ALLOW_REMOTE=1`.
 - Don't bake credentials into the markdown or spec. Use env vars.
 - Don't emit only the spec without the markdown. The markdown is the contract.
+
+## v4.3 — emit browser_test outcome as learning
+
+After running the Playwright spec for the phase:
+
+```bash
+SCRIPTS="${CLAUDE_PLUGIN_ROOT}/skills/sd-claude-code-access/scripts"
+"$SCRIPTS/learning.sh" "$WORKSPACE" browser_test_failure \
+  "phase=<N>" \
+  "outcome=<green|red>" \
+  "failing_step=<s4 or empty if green>" \
+  "browser=<chromium|firefox|webkit|mobile-chrome|mobile-safari>" \
+  "duration_s=<elapsed>"
+```
+
+Even on green, emit it — frequency-of-green per project tells autoresearch which projects
+exercise the skill heavily vs occasionally. Best-effort — never abort.

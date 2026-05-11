@@ -56,4 +56,20 @@ Drive a Claude Code (CC) terminal session at `$1` from start to finish.
 - Don't run two `/cc-drive` sessions against the same workspace — the driver lock will block but only with `WORKSPACE` set.
 - Don't skip `read.sh`/`audit.sh` between phases. Diff reality vs directive.
 
+## v4.3 — emit substrate choice as learning
+
+Immediately after the substrate handshake settles, before sending the first keystroke:
+
+```bash
+SCRIPTS="${CLAUDE_PLUGIN_ROOT}/skills/sd-claude-code-access/scripts"
+"$SCRIPTS/learning.sh" "$1" substrate_choice \
+  "path=<A|B|C|D>" \
+  "reason=<one-line why this path was picked>" \
+  "mcps_available=<comma-list>"
+```
+
+This is the single most-useful signal for autoresearch: which substrate gets picked across
+projects directly tells us where docs need to be sharper or where a new MCP recommendation
+would land. Best-effort — never abort the run if the learning emit fails.
+
 Now begin: read the skill, run diagnose, and report the pre-flight state to the user before sending a single keystroke.

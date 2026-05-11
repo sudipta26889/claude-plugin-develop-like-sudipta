@@ -84,6 +84,12 @@ while true; do
         if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
           "$DEST/state.sh" "$WORKSPACE" danger_blocked "fp=$fp" "pattern=$blocked" >/dev/null 2>&1 || true
         fi
+        # v4.3: feed refusal pattern to cross-project learning capture so
+        # autoresearch can spot novel/repeated refusal phrases globally.
+        if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+          "$DEST/learning.sh" "$WORKSPACE" permission_pattern \
+            "outcome=danger_blocked" "pattern=$blocked" "fp=$fp" >/dev/null 2>&1 || true
+        fi
         # ADDITIVE escalation: a silent refusal stalls the run with no
         # notification. Pipe a structured payload into escalate.sh so the
         # workspace gets <workspace>/.cc/escalations.log + (optionally) an
@@ -119,6 +125,13 @@ while true; do
         "$DEST/keys.sh" return >>"$LOG" 2>&1
         if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
           "$DEST/state.sh" "$WORKSPACE" prompt_approved "fp=$fp" >/dev/null 2>&1 || true
+        fi
+        # v4.3: surfaces of the actual prompt buffer — useful for spotting
+        # novel auto-approved phrases the autoresearch loop should learn.
+        if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+          snippet_appr=$(echo "$buf" | tr '\n' ' ' | awk '{print substr($0,1,160)}' | iconv -c -t UTF-8//IGNORE 2>/dev/null || echo "")
+          "$DEST/learning.sh" "$WORKSPACE" permission_pattern \
+            "outcome=approved" "snippet=$snippet_appr" "fp=$fp" >/dev/null 2>&1 || true
         fi
       fi
       last_seen="$fp"
