@@ -30,5 +30,13 @@
     "accepted": true,
     "baseline_before": 0.9524,
     "hypothesis": "remove 'json' token from desc to drop FP Q18 (pytest allowlist)"
+  },
+  {
+    "ts": "2026-05-11T12:56:06Z",
+    "target_hash": "sha256:b40bf02257d160ea6310d53d43b238b41fb6e7144532fbb555091e49daa5bb78",
+    "score": 0.8421,
+    "accepted": true,
+    "kind": "baseline",
+    "note": "fixture expanded by +20 adversarial queries (10 hard pos + 10 tricky neg); fresh baseline"
   }
 ]

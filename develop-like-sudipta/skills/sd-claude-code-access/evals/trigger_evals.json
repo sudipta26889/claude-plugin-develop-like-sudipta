@@ -1,22 +1,162 @@
 [
-  {"query": "I have a 16-phase implementation plan in docs/plans/2026-05-08-rotmg-qa-tracker-implementation.md and Claude Code is running in my Terminal session over SSH to my workstation. I'm heading into a meeting in 5 minutes — can you drive Claude Code through the whole plan while I'm away and have STATUS.md ready when I'm back? Auto-approve dev permission prompts, write phase directives, and check git log between phases.", "should_trigger": true},
-  {"query": "Phase 4 just finished in CC — pytest is green, all 6 commits landed, the checkpoint summary mentions clock_timestamp() in the round-robin code. Approve and trigger Phase 5 using my preferences from .cc/phase-5.md", "should_trigger": true},
-  {"query": "CC has been stuck for 20 minutes. Same time-elapsed counter, no new commits, token upload counter not moving. The slash command implementation should have committed by now. Help me unstick it.", "should_trigger": true},
-  {"query": "ok so claude code is in a terminal tab on this mac and i want you to just send it the next instructions instead of me copy pasting every time. its running in my main project folder", "should_trigger": true},
-  {"query": "send this to claude code: Approved Phase 9. Read .cc/phase-10.md and proceed to Phase 10 — Frontend (React + Vite). Stop and present a checkpoint after each commit per the directive.", "should_trigger": true},
-  {"query": "i'm running a long autonomous claude code session for my saas project tonight, can you watch the terminal and approve any 'do you want to proceed' prompts so i can sleep, also wake me up if anything actually breaks", "should_trigger": true},
-  {"query": "tell CC to start phase 12 — the eval harness one — and remind it that Saurabh's dataset isn't ready yet so it should ship the schema + 20-row example fixture and exit-code-2 PENDING in the runner", "should_trigger": true},
-  {"query": "set up the bridge so cowork can talk to my claude code session in iTerm. once that's working drive it through the implementation plan one phase at a time, stopping at each checkpoint", "should_trigger": true},
-  {"query": "audit phase 7 — read .cc/phase-7.md against the last 5 commits and tell me if anything in the directive didn't actually get implemented. CC said it was done but i'm suspicious", "should_trigger": true},
-  {"query": "Claude Code is hung again on a pytest call inside docker. Press Esc to interrupt and have it skip the slow integration tests for the rest of the phase, then continue the run.", "should_trigger": true},
-  {"query": "what's a good vacation spot in greece in late september", "should_trigger": false},
-  {"query": "write a bash script that finds all .png files in ~/Downloads larger than 5MB and moves them to an archive folder organized by month", "should_trigger": false},
-  {"query": "review my python code below and tell me if there's a bug in the round-robin assignment query — i think SELECT FOR UPDATE SKIP LOCKED is wrong here", "should_trigger": false},
-  {"query": "explain how SSE event broadcasting works with postgres LISTEN/NOTIFY in a multi-instance Cloud Run setup. I'm reading a design doc and don't understand the cross-instance fanout part.", "should_trigger": false},
-  {"query": "draft a slack message to my QA lead saying we'll need 200 anonymized bug reports for the eval gate. keep it short, tone is professional but warm", "should_trigger": false},
-  {"query": "i'm building a small fastapi app and i want claude to write the first version. just go ahead and create it, no need to do anything fancy with sessions or tools", "should_trigger": false},
-  {"query": "claude please update my resume — add a bullet about leading the qa tracker project at deca games, mention the slack bot + react dashboard + cloud run deploy", "should_trigger": false},
-  {"query": "what's the difference between asyncio.gather with return_exceptions=True vs without? trying to figure out which to use in my crawler", "should_trigger": false},
-  {"query": "my claude code keeps asking me to approve every pytest invocation even though i added it to the allowlist in .claude/settings.local.json. how do i make it stop?", "should_trigger": false},
-  {"query": "git rebase tutorial please — i have 12 commits on a feature branch and i want to squash them into 3 logical groups before opening the PR", "should_trigger": false}
+  {
+    "query": "I have a 16-phase implementation plan in docs/plans/2026-05-08-rotmg-qa-tracker-implementation.md and Claude Code is running in my Terminal session over SSH to my workstation. I'm heading into a meeting in 5 minutes \u2014 can you drive Claude Code through the whole plan while I'm away and have STATUS.md ready when I'm back? Auto-approve dev permission prompts, write phase directives, and check git log between phases.",
+    "should_trigger": true
+  },
+  {
+    "query": "Phase 4 just finished in CC \u2014 pytest is green, all 6 commits landed, the checkpoint summary mentions clock_timestamp() in the round-robin code. Approve and trigger Phase 5 using my preferences from .cc/phase-5.md",
+    "should_trigger": true
+  },
+  {
+    "query": "CC has been stuck for 20 minutes. Same time-elapsed counter, no new commits, token upload counter not moving. The slash command implementation should have committed by now. Help me unstick it.",
+    "should_trigger": true
+  },
+  {
+    "query": "ok so claude code is in a terminal tab on this mac and i want you to just send it the next instructions instead of me copy pasting every time. its running in my main project folder",
+    "should_trigger": true
+  },
+  {
+    "query": "send this to claude code: Approved Phase 9. Read .cc/phase-10.md and proceed to Phase 10 \u2014 Frontend (React + Vite). Stop and present a checkpoint after each commit per the directive.",
+    "should_trigger": true
+  },
+  {
+    "query": "i'm running a long autonomous claude code session for my saas project tonight, can you watch the terminal and approve any 'do you want to proceed' prompts so i can sleep, also wake me up if anything actually breaks",
+    "should_trigger": true
+  },
+  {
+    "query": "tell CC to start phase 12 \u2014 the eval harness one \u2014 and remind it that Saurabh's dataset isn't ready yet so it should ship the schema + 20-row example fixture and exit-code-2 PENDING in the runner",
+    "should_trigger": true
+  },
+  {
+    "query": "set up the bridge so cowork can talk to my claude code session in iTerm. once that's working drive it through the implementation plan one phase at a time, stopping at each checkpoint",
+    "should_trigger": true
+  },
+  {
+    "query": "audit phase 7 \u2014 read .cc/phase-7.md against the last 5 commits and tell me if anything in the directive didn't actually get implemented. CC said it was done but i'm suspicious",
+    "should_trigger": true
+  },
+  {
+    "query": "Claude Code is hung again on a pytest call inside docker. Press Esc to interrupt and have it skip the slow integration tests for the rest of the phase, then continue the run.",
+    "should_trigger": true
+  },
+  {
+    "query": "what's a good vacation spot in greece in late september",
+    "should_trigger": false
+  },
+  {
+    "query": "write a bash script that finds all .png files in ~/Downloads larger than 5MB and moves them to an archive folder organized by month",
+    "should_trigger": false
+  },
+  {
+    "query": "review my python code below and tell me if there's a bug in the round-robin assignment query \u2014 i think SELECT FOR UPDATE SKIP LOCKED is wrong here",
+    "should_trigger": false
+  },
+  {
+    "query": "explain how SSE event broadcasting works with postgres LISTEN/NOTIFY in a multi-instance Cloud Run setup. I'm reading a design doc and don't understand the cross-instance fanout part.",
+    "should_trigger": false
+  },
+  {
+    "query": "draft a slack message to my QA lead saying we'll need 200 anonymized bug reports for the eval gate. keep it short, tone is professional but warm",
+    "should_trigger": false
+  },
+  {
+    "query": "i'm building a small fastapi app and i want claude to write the first version. just go ahead and create it, no need to do anything fancy with sessions or tools",
+    "should_trigger": false
+  },
+  {
+    "query": "claude please update my resume \u2014 add a bullet about leading the qa tracker project at deca games, mention the slack bot + react dashboard + cloud run deploy",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the difference between asyncio.gather with return_exceptions=True vs without? trying to figure out which to use in my crawler",
+    "should_trigger": false
+  },
+  {
+    "query": "my claude code keeps asking me to approve every pytest invocation even though i added it to the allowlist in .claude/settings.local.json. how do i make it stop?",
+    "should_trigger": false
+  },
+  {
+    "query": "git rebase tutorial please \u2014 i have 12 commits on a feature branch and i want to squash them into 3 logical groups before opening the PR",
+    "should_trigger": false
+  },
+  {
+    "query": "I have CC running in iTerm tab 2 and another claude session in tab 3 \u2014 drive the one in tab 2 only, the other one is for poking around",
+    "should_trigger": true
+  },
+  {
+    "query": "ssh into the m1-studio in my closet and drive the CC that's running there for the auth-microservice phase. SSH_TARGET is sudipta@studio.local",
+    "should_trigger": true
+  },
+  {
+    "query": "my cowork session died last night halfway through phase 6 on the macbook \u2014 I'm on the desktop now, resume the run from where the state.json left off",
+    "should_trigger": true
+  },
+  {
+    "query": "watch CC for the next 4 hours while I'm in meetings, ping me only on phase failures or if the watchdog refuses something",
+    "should_trigger": true
+  },
+  {
+    "query": "yo cowork take over from here, CC is sitting at phase 11 awaiting my approval and I'm done for the day",
+    "should_trigger": true
+  },
+  {
+    "query": "after every CC commit on phase 8, audit drift between the directive and what landed in git, then update STATUS.md",
+    "should_trigger": true
+  },
+  {
+    "query": "each time CC finishes a phase, open Chrome to localhost:5173, verify the dashboard renders without console errors, and write the playwright spec into docs/e2e-testing",
+    "should_trigger": true
+  },
+  {
+    "query": "CC just pushed a fix but our integration test for the cart-total bug still fails \u2014 drive the bug-driven TDD loop, write the failing pytest + playwright step first, then send the fix directive",
+    "should_trigger": true
+  },
+  {
+    "query": "pre-write phases 12 through 18 directives into .cc/ based on docs/plans/2026-implementation.md, then kick off CC on phase 12 and let it run through 18",
+    "should_trigger": true
+  },
+  {
+    "query": "the phase-7 directive said implement the SAGA outbox pattern but CC built a synchronous double-write \u2014 flag this drift and propose a corrective directive to .cc/phase-7-fix.md",
+    "should_trigger": true
+  },
+  {
+    "query": "moving phase 3 of our org migration to next sprint \u2014 update the jira board and notify the team",
+    "should_trigger": false
+  },
+  {
+    "query": "audit my AWS bill for unused EC2 instances from the last 90 days and recommend what to shut down",
+    "should_trigger": false
+  },
+  {
+    "query": "write unit tests for the new authenticate_user function in src/auth/login.py \u2014 pytest, AAA pattern",
+    "should_trigger": false
+  },
+  {
+    "query": "I'm already inside claude code's terminal, can you refactor this function I just pasted? remove the nested try/except",
+    "should_trigger": false
+  },
+  {
+    "query": "watch the github actions ci run and ping me on slack when it finishes \u2014 passing or failing",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a cron job that runs every hour to clean up tmp files older than a week from /var/tmp",
+    "should_trigger": false
+  },
+  {
+    "query": "drive the marketing-funnel metrics from segment to a looker dashboard with a weekly digest",
+    "should_trigger": false
+  },
+  {
+    "query": "install the develop-like-sudipta plugin from the marketplace and configure it for my main repo",
+    "should_trigger": false
+  },
+  {
+    "query": "I have a long-running terminal session that I need to detach from and reattach later \u2014 what's the cleanest way? tmux? screen? something else?",
+    "should_trigger": false
+  },
+  {
+    "query": "claude please summarize this CSV of last quarter's support tickets \u2014 top 3 categories by volume, top 3 by mean-time-to-resolve",
+    "should_trigger": false
+  }
 ]
