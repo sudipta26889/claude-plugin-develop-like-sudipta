@@ -1,0 +1,54 @@
+{
+  "skill_name": "sd-claude-code-access",
+  "reference_section": "references/bug_driven_tdd.md",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Reproduce this bug with a failing test first",
+      "expected_output": "Skill should trigger. Cowork should follow the bug-driven TDD protocol in references/bug_driven_tdd.md — capture the bug in .cc/bugs/<bug-id>.md, write a failing unit test that reproduces it, confirm RED before any fix is written.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Write the pytest that captures this bug",
+      "expected_output": "Skill should trigger. Cowork should generate a pytest case per references/bug_driven_tdd.md that minimally reproduces the bug, confirm it fails on current main, then proceed to the fix-and-green stage.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Why do we need both a unit and browser test for the fix?",
+      "expected_output": "Skill should trigger. Cowork should explain the four-greens rule from references/bug_driven_tdd.md: unit RED -> unit GREEN -> browser RED -> browser GREEN, and why both layers are required before a bug is closed.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Apply bug-driven TDD to this failure",
+      "expected_output": "Skill should trigger. Cowork should execute the full bug-driven TDD workflow from references/bug_driven_tdd.md: create .cc/bugs/<bug-id>.md, write failing unit + browser tests, implement fix, verify all four greens, commit.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Confirm four greens before closing the bug",
+      "expected_output": "Skill should trigger. Cowork should verify the four-greens checklist from references/bug_driven_tdd.md — unit RED captured, unit GREEN after fix, browser RED captured, browser GREEN after fix — and only then mark the bug closed.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "What goes in .cc/bugs/<bug-id>.md?",
+      "expected_output": "Skill should trigger. Cowork should describe the .cc/bugs/<bug-id>.md template per references/bug_driven_tdd.md and assets/bug_report_template.md — repro steps, expected vs actual, failing-test pointers, fix commit, four-greens evidence.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Don't fix without a failing test",
+      "expected_output": "Skill should trigger. Cowork should enforce the no-fix-without-RED rule from references/bug_driven_tdd.md — block the fix attempt, demand a failing test first, and document the repro in .cc/bugs/<bug-id>.md.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Explain how to roast coffee beans at home",
+      "expected_output": "Skill should NOT trigger — unrelated to bug-driven TDD or Claude Code orchestration.",
+      "files": []
+    }
+  ]
+}

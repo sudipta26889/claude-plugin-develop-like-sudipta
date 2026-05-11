@@ -1,0 +1,54 @@
+{
+  "skill_name": "sd-claude-code-access",
+  "reference_section": "references/verify_gate.md",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run static checks before Chrome opens",
+      "expected_output": "Skill should trigger. Cowork should configure the verify gate per references/verify_gate.md — wire ruff/mypy/eslint (or auto-detected static tools) to run BEFORE any browser-test step, and short-circuit the browser if static checks fail.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Pytest should run before browser-test",
+      "expected_output": "Skill should trigger. Cowork should configure the verify gate per references/verify_gate.md so that pytest runs before any browser-test invocation, with the browser stage gated on unit-test exit code 0.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Set up the verify gate for this project",
+      "expected_output": "Skill should trigger. Cowork should follow references/verify_gate.md: auto-detect test runners and linters, generate the verify-gate config, persist it, and dry-run once to confirm the order (static -> unit -> browser).",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Configure flake_retries to 3 for our integration tests",
+      "expected_output": "Skill should trigger. Cowork should edit the verify-gate config (flake_retries field) per references/verify_gate.md and assets/flake_whitelist.example.json, validate the change, and explain the retry semantics.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Add a test to the flake whitelist",
+      "expected_output": "Skill should trigger. Cowork should update the flake whitelist per references/verify_gate.md (schema matches assets/flake_whitelist.example.json), confirm the test ID format, and re-run the gate to verify the entry takes effect.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Auto-detect test runners for the new repo",
+      "expected_output": "Skill should trigger. Cowork should run the runner auto-detection routine from references/verify_gate.md — scan for pytest/jest/vitest/cargo/go/maven markers in the repo, emit a proposed gate config, and ask the user to confirm.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Why is the gate running ruff?",
+      "expected_output": "Skill should trigger. Cowork should explain the verify-gate static-checks stage per references/verify_gate.md — show the detected linters (ruff was selected because the repo contains pyproject.toml/ruff config), and how to disable or substitute it.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Recommend a JavaScript testing framework for a small side project",
+      "expected_output": "Skill should NOT trigger — general framework discussion, not verify-gate configuration.",
+      "files": []
+    }
+  ]
+}

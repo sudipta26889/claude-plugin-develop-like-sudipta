@@ -1,0 +1,54 @@
+{
+  "skill_name": "sd-claude-code-access",
+  "reference_section": "references/substrate_and_access.md",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How does Cowork actually reach my Mac?",
+      "expected_output": "Skill should trigger. Cowork should consult references/substrate_and_access.md, then explain the substrate model: local-mac (osascript/iTerm), ssh-mac (ssh -t to remote macOS with osascript), and tmux fallback. Probe the current environment (Desktop_Commander, osascript, SSH_TARGET) before answering definitively.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Is Desktop_Commander available?",
+      "expected_output": "Skill should trigger. Cowork should run a substrate probe (per references/substrate_and_access.md) — check Desktop_Commander tool presence, confirm whether osascript is the active path, and report which substrate the skill is currently using.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Which path is the skill using right now?",
+      "expected_output": "Skill should trigger. Cowork should detect the active substrate (local osascript vs ssh-mac vs tmux) using the probe described in references/substrate_and_access.md and report the current selection plus how to switch.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Why isn't Cowork running osascript?",
+      "expected_output": "Skill should trigger. Cowork should diagnose substrate selection per references/substrate_and_access.md: confirm whether Desktop_Commander is bound, whether the user is on a remote vs local mac, and whether SSH_TARGET is set — then explain why osascript was not picked.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I need Cowork to drive Claude Code on a remote Mac via SSH",
+      "expected_output": "Skill should trigger. Cowork should set up the ssh-mac substrate per references/substrate_and_access.md and references/ssh_variant.md — configure SSH_TARGET, validate connectivity via scripts/ssh_probe.sh, then wire send.sh/read.sh through ssh -t.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Set up SSH_TARGET for the bridge",
+      "expected_output": "Skill should trigger. Cowork should configure SSH_TARGET per references/substrate_and_access.md / references/ssh_variant.md and validate the connection with scripts/ssh_probe.sh before proceeding.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Probe substrate for this project",
+      "expected_output": "Skill should trigger. Cowork should run the substrate detection procedure from references/substrate_and_access.md — enumerate available tools/paths (Desktop_Commander, osascript, ssh, tmux), pick the best substrate for this project, and persist the selection.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "What's the weather in Berlin tomorrow?",
+      "expected_output": "Skill should NOT trigger — unrelated to substrate detection or Claude Code orchestration.",
+      "files": []
+    }
+  ]
+}
