@@ -1,4 +1,8 @@
 {
+  "git_hooks": {
+    "commit-msg": "hooks/scripts/check_bug_id.sh",
+    "pre-commit": "hooks/scripts/check_test_paired_with_src.sh"
+  },
   "hooks": {
     "PreToolUse": [
       {
