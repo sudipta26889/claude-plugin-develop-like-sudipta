@@ -95,7 +95,15 @@ while true; do
           if [ -x "$DEST/escalate.sh" ]; then
             # ~200-char snippet of the buffer so the log entry stays
             # grep-friendly without dumping the whole screen.
-            snippet=$(echo "$buf" | tr '\n' ' ' | cut -c1-200)
+            # UTF-8-safe truncation: `cut -c` operates on BYTES on macOS
+            # and most Linux builds, so cutting at byte 200 can land
+            # mid-multibyte sequence and emit invalid UTF-8 trailing into
+            # escalations.log (breaking jq, Slack webhooks, etc).
+            # `awk substr` is also byte-based, so we follow with
+            # `iconv -c -t UTF-8//IGNORE` to drop any trailing partial
+            # bytes. iconv ships at /usr/bin/iconv on macOS + all
+            # supported Linux distros.
+            snippet=$(echo "$buf" | tr '\n' ' ' | awk '{print substr($0,1,200)}' | iconv -c -t UTF-8//IGNORE)
             {
               echo "fp=$fp"
               echo "matched=$blocked"

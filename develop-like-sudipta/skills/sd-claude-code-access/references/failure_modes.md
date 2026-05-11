@@ -86,13 +86,19 @@ A catalog of failure modes that have actually happened, and the procedure for ea
 
 **Wire up notifications (optional but recommended):**
 
-Export `ESCALATE_CMD` before starting the watchdog to get pushed alerts:
+Export `ESCALATE_CMD` before starting the watchdog to get pushed alerts. The escalate payload contains literal newlines and may contain quotes — so anything pushing it as JSON MUST encode it via `jq` (or equivalent). Naively interpolating `$(cat)` into a JSON string produces invalid JSON the moment the payload contains a newline or a `"` character.
 
 ```bash
-# ntfy.sh example
-export ESCALATE_CMD='curl -d @- https://ntfy.sh/your-private-topic'
-# Slack webhook example
-export ESCALATE_CMD='curl -X POST -H "Content-type: application/json" --data "{\"text\": \"$(cat)\"}" https://hooks.slack.com/...'
+# ntfy.sh — accepts plain text, no JSON encoding needed
+export ESCALATE_CMD='curl --data-binary @- https://ntfy.sh/your-private-topic'
+
+# Slack webhook — payload MUST be JSON-encoded. `jq -Rs '{text: .}'` reads
+# stdin raw (-R) and slurps the whole thing into one JSON-encoded string
+# (-s), producing valid JSON regardless of newlines/quotes in the payload.
+# Requires jq (brew install jq).
+export WEBHOOK_URL='https://hooks.slack.com/services/...'
+export ESCALATE_CMD='jq -Rs "{text: .}" | curl -X POST -H "Content-Type: application/json" --data-binary @- "$WEBHOOK_URL"'
+
 ~/.cache/ccbridge/start_watchdog.sh
 ```
 

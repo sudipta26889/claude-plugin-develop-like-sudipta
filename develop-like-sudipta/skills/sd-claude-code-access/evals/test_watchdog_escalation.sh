@@ -236,9 +236,96 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Case 4 — UTF-8 boundary safety in watchdog snippet truncation
+#
+# Background: the watchdog builds a ~200-char snippet of the visible
+# buffer before piping it into escalate.sh. The previous implementation
+# used `cut -c1-200`, which on macOS/Linux operates on BYTES — cutting
+# at byte 200 can land mid-multibyte sequence and emit invalid UTF-8
+# into escalations.log (breaking jq, Slack webhooks, etc).
+#
+# This case exercises the integration path with a buffer that places a
+# multibyte UTF-8 character (€ = \xe2\x82\xac, 3 bytes) straddling the
+# 200-byte boundary, then verifies the resulting escalations.log is
+# valid UTF-8 via `iconv -f UTF-8 -t UTF-8 < <log>`.
+# ---------------------------------------------------------------------------
+echo
+echo "── Case 4: watchdog snippet truncation is UTF-8-safe ──"
+WS4="$(mktemp -d "$TMP_ROOT/wd-esc-XXXXXX")"
+mkdir -p "$WS4/.cc"
+BRIDGE4="$(mktemp -d "$TMP_ROOT/wd-esc-bridge-XXXXXX")"
+
+echo 'prodctl_nuke' > "$WS4/.cc/danger_patterns_extra.txt"
+: > "$BRIDGE4/danger_patterns.txt"
+
+# Craft a buffer so the snippet path lands mid-multibyte. After the
+# `tr '\n' ' '` collapse the buffer is roughly one line; we want the
+# 200-byte mark to land on byte 2 of a 3-byte € (\xe2\x82\xac). Pad
+# with 198 'a's, then €, then trailing junk + the prompt the watchdog
+# requires. The danger token 'prodctl_nuke' lives later in the buffer.
+# We write the buffer to a fixture file so the stub read.sh can `cat`
+# it verbatim (no shell-quoting hazards with multibyte bytes).
+{
+  printf 'a%.0s' $(seq 1 198)
+  printf '\xe2\x82\xac'
+  printf 'trailing-junk prodctl_nuke --target=prod\n'
+  printf 'Do you want to proceed?\n1. Yes\n2. No\n'
+} > "$BRIDGE4/buffer.txt"
+
+cat > "$BRIDGE4/read.sh" <<EOF
+#!/usr/bin/env bash
+cat "$BRIDGE4/buffer.txt"
+EOF
+chmod +x "$BRIDGE4/read.sh"
+
+cat > "$BRIDGE4/keys.sh" <<EOF
+#!/usr/bin/env bash
+echo "keys.sh called with: \$*" >> "$BRIDGE4/keys.log"
+EOF
+chmod +x "$BRIDGE4/keys.sh"
+
+cp "$ESCALATE" "$BRIDGE4/escalate.sh"
+chmod +x "$BRIDGE4/escalate.sh"
+
+env CCBRIDGE_DIR="$BRIDGE4" WORKSPACE="$WS4" bash "$WATCHDOG" >"$BRIDGE4/watchdog.out" 2>"$BRIDGE4/watchdog.err" &
+WD_PID4=$!
+
+LOG4="$WS4/.cc/escalations.log"
+waited=0
+while [ "$waited" -lt 12 ]; do
+  if [ -s "$LOG4" ]; then
+    break
+  fi
+  sleep 1
+  waited=$((waited + 1))
+done
+
+{
+  kill -KILL "$WD_PID4" 2>/dev/null || true
+  pkill -KILL -P "$WD_PID4" 2>/dev/null || true
+  wait "$WD_PID4" 2>/dev/null || true
+} 2>/dev/null
+
+echo "  watchdog waited ${waited}s before escalations.log appeared"
+
+if [ -s "$LOG4" ]; then
+  pass "watchdog wrote escalations.log on UTF-8-boundary buffer"
+else
+  fail "escalations.log not written within 12 s"
+fi
+
+# Core assertion: the resulting log must be valid UTF-8. `iconv -f UTF-8
+# -t UTF-8` exits non-zero on any invalid byte sequence.
+if iconv -f UTF-8 -t UTF-8 <"$LOG4" >/dev/null 2>&1; then
+  pass "escalations.log is valid UTF-8 (no mid-multibyte cut)"
+else
+  fail "escalations.log contains invalid UTF-8 — snippet cut mid-multibyte"
+fi
+
+# ---------------------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------------------
-rm -rf "$WS1" "$WS2" "$WS3" "$BRIDGE3"
+rm -rf "$WS1" "$WS2" "$WS3" "$WS4" "$BRIDGE3" "$BRIDGE4"
 rm -f "$OUT2"
 
 echo
