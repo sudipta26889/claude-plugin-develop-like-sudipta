@@ -31,6 +31,11 @@
 #   1  bad usage / workspace not a dir
 #   2  spawn timed out (CC didn't appear within LAUNCH_TIMEOUT_S)
 #   3  unsupported TERMINAL_APP
+#
+# Flag note (v4.6 D2): --continue resumes the most recent session for the cwd. On a
+# brand-new workspace with no <workspace>/.claude/projects/, --continue may either
+# show a session-picker menu OR open a fresh session — depends on CC version.
+# Recommend CC_LAUNCH_FLAGS="--chrome" (drop --continue) for brand-new workspaces.
 
 set -euo pipefail
 
