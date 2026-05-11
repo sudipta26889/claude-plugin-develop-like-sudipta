@@ -1,0 +1,1 @@
+Bash 3.2 audit (v4.2 gap C) - 2026-05-11 - 74 .sh files swept across skills/*/scripts, skills/*/evals, hooks/scripts; checked local -n / mapfile / readarray / ${var,,} / ${var^^} / ${var@U} / ${var@L} / wait -n / declare -A / typeset -A - zero hits outside compatibility-declaration comments; /bin/bash -n (3.2.57) passes on every file - no source changes required.
