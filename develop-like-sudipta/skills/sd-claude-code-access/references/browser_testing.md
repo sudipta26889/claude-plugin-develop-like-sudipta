@@ -145,6 +145,8 @@ Map each acceptance criterion to a short sequence:
 | File upload | `file_upload` |
 | Drag-drop / complex gesture | `computer` with precise actions; document the gesture in the md |
 
+> For streaming features (WebSocket / SSE / HTTP chunked), see `references/streaming_testing.md` — assertions about frame content and message timing need a different pattern than the table above.
+
 **Anti-patterns:**
 - Don't use coordinate clicks if a `find`-based selector works.
 - Don't `wait` blindly — poll with `find` until the element exists, max 10s.
