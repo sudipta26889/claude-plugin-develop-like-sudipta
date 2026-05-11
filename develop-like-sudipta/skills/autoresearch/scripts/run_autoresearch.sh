@@ -11,12 +11,11 @@
 # Loop:
 #   1. baseline = run score.sh on current state
 #   2. for i in 1..budget:
-#        a. read current target content
-#        b. propose new content via propose_hypothesis.sh (v4.1 stub)
-#        c. apply candidate (atomic temp + mv)
-#        d. score = score.sh, time-boxed to --time SEC
-#        e. compare to baseline; commit (git_experiment.sh accept) or revert (reject)
-#        f. append to .baselines.json
+#        a. propose new target content via propose_hypothesis.sh (stdout = full target)
+#        b. apply candidate (overwrite target file)
+#        c. score = score.sh, time-boxed to --time SEC
+#        d. compare to baseline; commit (git_experiment.sh accept) or revert (reject)
+#        e. append to .baselines.json
 #   3. --once exits after one cycle (for testing).
 #
 # Bash 3.2 compatible. macOS-friendly. No mapfile / wait -n / associative arrays.
@@ -210,24 +209,34 @@ while [ "$i" -lt "$LIMIT" ]; do
   echo ""
   echo "[autoresearch] === experiment $i / $LIMIT ==="
 
-  # 1. propose (v4.1 stub: emits guidance; no mutation made)
+  # 1. propose (v4.2: dispatcher invokes file-mode or api-mode proposer)
+  # propose_hypothesis.sh emits the FULL new target content on stdout. Its
+  # stderr is captured to a log so dispatcher chatter doesn't pollute the
+  # candidate content. Non-zero exit code or empty stdout => skip this
+  # iteration without touching the target file or git.
+  PROPOSE_LOG="$AR_DIR/.proposer.stderr.log"
   PROPOSAL_OUT="$(mktemp)"
-  bash "$PROPOSE" "$SKILL_DIR" > "$PROPOSAL_OUT" 2>&1 || true
+  bash "$PROPOSE" "$SKILL_DIR" > "$PROPOSAL_OUT" 2>>"$PROPOSE_LOG"
+  proposer_rc=$?
 
-  # In v4.1 the proposer is a stub. Cowork/CC supplies the actual mutation
-  # out-of-band; here, we detect whether the target file is dirty (proposer
-  # OR human modified it) and only score if so.
-  ( cd "$SKILL_DIR" && git diff --quiet -- "$TARGET_REL" ) && DIRTY=0 || DIRTY=1
-  rm -f "$PROPOSAL_OUT"
-
-  if [ "$DIRTY" = "0" ]; then
-    echo "[autoresearch] no candidate proposed (target unchanged). v4.1: proposer is a stub."
-    echo "[autoresearch] write a candidate to $TARGET_FILE then re-run with --once to score it."
+  if [ "$proposer_rc" -ne 0 ]; then
+    echo "[autoresearch] proposer failed (rc=$proposer_rc) — see $PROPOSE_LOG; skipping iteration" >&2
+    rm -f "$PROPOSAL_OUT"
     if [ "$ONCE" = "1" ]; then exit 0; fi
-    # in a multi-cycle run with the stub proposer, we'd spin forever. Break out.
-    echo "[autoresearch] stub proposer + multi-cycle = nothing to do. Stopping."
-    break
+    continue
   fi
+
+  if [ ! -s "$PROPOSAL_OUT" ]; then
+    echo "[autoresearch] proposer returned empty content — skipping iteration" >&2
+    rm -f "$PROPOSAL_OUT"
+    if [ "$ONCE" = "1" ]; then exit 0; fi
+    continue
+  fi
+
+  # Apply the candidate: overwrite the target file with the proposed content.
+  # Use cp to preserve byte-for-byte content (including trailing newlines).
+  cp "$PROPOSAL_OUT" "$TARGET_FILE"
+  rm -f "$PROPOSAL_OUT"
 
   IN_FLIGHT=1
 
