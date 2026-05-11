@@ -13,7 +13,14 @@ SCRIPTS=(
   state.sh state_salvage.sh lock.sh diagnose.sh run_summary.sh
   install_precommit.sh
   escalate.sh
+  # v4.3 — runtime-learning capture
+  register_project.sh learning.sh
 )
+
+# v4.3 — bootstrap ccbridge data subdirs so learning.sh + register_project.sh
+# can dual-write immediately after install. Idempotent.
+mkdir -p "$DEST/learnings" "$DEST/aggregated" "$DEST/distillation"
+[ -f "$DEST/projects.json" ] || echo '{"version":1,"projects":[]}' > "$DEST/projects.json"
 
 for f in "${SCRIPTS[@]}"; do
   cp -f "$HERE/$f" "$DEST/$f"
