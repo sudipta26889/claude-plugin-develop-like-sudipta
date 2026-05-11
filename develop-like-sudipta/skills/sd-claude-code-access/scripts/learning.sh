@@ -28,9 +28,20 @@
 
 set -euo pipefail
 
-WS="${1:?usage: learning.sh <workspace> <category> [k=v ...]}"
-CAT="${2:?usage: learning.sh <workspace> <category> [k=v ...]}"
+WS="${1:?usage: learning.sh <workspace> <category> [k=v ...]   (stdin = optional long-form body)}"
+CAT="${2:?usage: learning.sh <workspace> <category> [k=v ...]   (stdin = optional long-form body)}"
 shift 2
+
+# v4.6 — argv validation. Reject empty workspace or category and any kv pair
+# that doesn't contain '=' (common mistake: positional arg where kv expected).
+[ -d "$WS" ] || { echo "[learning] ERROR: workspace not a dir: $WS" >&2; exit 1; }
+[ -n "$CAT" ] || { echo "[learning] ERROR: empty category" >&2; exit 1; }
+for arg in "$@"; do
+  case "$arg" in
+    *=*) ;;  # ok
+    *) echo "[learning] ERROR: argument '$arg' is not key=value" >&2; exit 1 ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ID=$("$SCRIPT_DIR/register_project.sh" "$WS")
@@ -40,6 +51,14 @@ LOCAL_F="$WS/.cc/learnings.jsonl"
 CENTRAL_F="$CCBRIDGE/learnings/$ID.jsonl"
 mkdir -p "$WS/.cc"
 
+# v4.6 — optional stdin body (F5). If anything is piped on stdin, capture it
+# under a "body" field. Useful for multi-line notes / markdown / log excerpts
+# that don't fit in key=value kv pairs.
+BODY=""
+if [ ! -t 0 ]; then
+  BODY="$(cat)"
+fi
+
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 JSON='{"ts":"'"$TS"'","ws_id":"'"$ID"'","category":"'"$CAT"'"'
 for arg in "$@"; do
@@ -48,8 +67,16 @@ for arg in "$@"; do
   v_esc=$(printf '%s' "$v" | python3 -c 'import sys,json; sys.stdout.write(json.dumps(sys.stdin.read())[1:-1])')
   JSON="$JSON,\"$k\":\"$v_esc\""
 done
+if [ -n "$BODY" ]; then
+  BODY_ESC=$(printf '%s' "$BODY" | python3 -c 'import sys,json; sys.stdout.write(json.dumps(sys.stdin.read())[1:-1])')
+  JSON="$JSON,\"body\":\"$BODY_ESC\""
+fi
 JSON="$JSON}"
 
 # Append-only, both sides. Order: local first (closer to caller, debuggable), then central.
 echo "$JSON" >> "$LOCAL_F"
 echo "$JSON" >> "$CENTRAL_F" 2>/dev/null || true  # central write best-effort
+
+# v4.6 — H2: print one-line success so the caller knows the write landed.
+# Routes to stderr so structured-output callers can still pipe stdout cleanly.
+echo "[learning] event=$CAT ws=$ID -> $LOCAL_F" >&2

@@ -46,6 +46,62 @@ Drive a Claude Code (CC) terminal session at `$1` from start to finish.
 - Use subagents for parallel audit / polling / directive-drafting where it saves context.
 - Write to `$1/.cc/` (must be gitignored — Phase 1 task adds this if missing).
 
+## Continuous-drive mode (v4.6 — read FIRST)
+
+You (Cowork) are the manager. **You do NOT stop watching while Claude Code is running in its terminal.** Specifically:
+
+- **Don't wait for the user to ping you.** They started the run; they expect you to drive it through to completion, escalating only on hard blockers.
+- **Poll the CC terminal continuously** at 60–180s intervals. Use `read.sh` to check the visible buffer, `audit.sh` to diff directive vs commits, `git log --oneline -1` for cheap progress probes.
+- **Trigger the next phase automatically** when the current phase emits `phase_complete` in `<workspace>/.cc/state.json`. Don't ask the user "should I proceed?" — the plan is the answer; advance unless a phase is genuinely red.
+- **Escalate ONLY on:** (a) verify-gate red after 3 fix attempts (per bug-driven TDD), (b) hard external blocker (network down, secret missing, ambiguous design choice), or (c) the user explicitly asks you to stop.
+- **The CC side mirrors this contract** — see the "Operating mode" section that the v4.6 `directive_template.md` injects into every per-phase directive. CC also doesn't wait for pings within a phase.
+
+If you find yourself ABOUT to ask the user "want me to continue?", stop and instead: (1) advance to the next phase, OR (2) escalate with a one-line `BLOCKED:` summary. There is no third option.
+
+## User-direct input (rare but real)
+
+**Default model:** the user talks to Cowork; Cowork talks to CC. You are the only voice into CC's terminal. The user does NOT type directly into the CC tab.
+
+**Exception:** the user CAN type into CC directly (e.g. to override a stuck state, give CC private context, or experiment ad-hoc). When this happens you have to detect it so you don't get confused or duplicate work.
+
+**Detection on each poll cycle:**
+
+1. Read the CC scrollback via `read_history.sh`.
+2. Compare against the `message_sent` events you logged to `<workspace>/.cc/state.json` — each event has the `frag` you used to verify your own paste.
+3. Any user prompt in CC that lacks a matching `frag` in `state.json` → user-direct input.
+4. When detected:
+   - Log a `state.sh user_direct_input snippet="<first 80 chars>"` event for the audit trail.
+   - **Don't repeat work CC may already be doing in response to that input.** Wait one extra poll cycle before sending your next directive.
+   - **Don't drop your own plan** — your phase directives still apply. Just acknowledge in your next interaction with the user ("noticed you typed X to CC directly; I'm coordinating around it") and continue.
+
+If user-direct input happens repeatedly in one phase (≥3 times), pause your phase loop and ask the user once: "you're driving CC directly — should I step back, or keep advancing the plan?" That's the only acceptable "ask the user" interruption.
+
+## Plugin layout (orientation)
+
+```
+<plugin-root>/                          (=develop-like-sudipta/)
+├── .claude-plugin/plugin.json          ← version + description
+├── agents/                             ← 9 isolated-context subagents
+├── commands/                           ← 23 slash commands (this dir)
+├── assets/
+│   └── scheduled-tasks/                ← bundled SKILL.md for Cowork cron tasks
+│       ├── ccbridge-aggregate-learnings/SKILL.md
+│       └── ccbridge-distill-and-propose/SKILL.md
+├── skills/
+│   ├── sd-claude-code-access/
+│   │   ├── SKILL.md                    ← the methodology
+│   │   ├── references/                 ← deep-dives (verify_gate, bug_TDD, etc.)
+│   │   ├── assets/                     ← directive_template, bug_report_template, etc.
+│   │   └── scripts/                    ← what install.sh copies into ~/.cache/ccbridge/
+│   ├── autoresearch/scripts/           ← aggregate_learnings, distill_learnings
+│   ├── code-hacker/
+│   └── develop-like-sudipta/
+└── hooks/                              ← git pre-commit hooks
+    └── scripts/
+        ├── check_no_hardcoded_paths.sh ← refuses /Users/<name>/ commits
+        └── install_precommit_path_check.sh
+```
+
 ## Don't
 
 - Don't paste long markdown directly into CC. Use file-based directives.

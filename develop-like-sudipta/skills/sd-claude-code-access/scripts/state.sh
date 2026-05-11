@@ -12,8 +12,31 @@
 # under concurrent writers. The "current" snapshot is the rolling tail.
 # Resume-after-crash reads the tail to know where the run left off.
 set -euo pipefail
-WS="${1:?usage: state.sh <workspace> <event_type> [k=v ...]}"
-EVT="${2:?usage: state.sh <workspace> <event_type> [k=v ...]}"
+
+# v4.6 — `tail`/`recent` subcommand: dump last N JSONL events pretty-printed.
+# Discoverable alternative to `tail -10 .cc/state.json | jq` for users who
+# don't use jq daily.
+if [ "${1:-}" = "tail" ] || [ "${1:-}" = "recent" ]; then
+  WS="${2:?usage: state.sh tail <workspace> [N=10]}"
+  N="${3:-10}"
+  F="$WS/.cc/state.json"
+  if [ ! -f "$F" ]; then
+    echo "[state] no state.json at $F" >&2
+    exit 1
+  fi
+  tail -n "$N" "$F" | python3 -c '
+import json, sys
+for ln in sys.stdin:
+    ln = ln.strip()
+    if not ln: continue
+    try: print(json.dumps(json.loads(ln), indent=2))
+    except: print(ln)
+'
+  exit 0
+fi
+
+WS="${1:?usage: state.sh <workspace> <event_type> [k=v ...]   OR   state.sh tail <workspace> [N=10]}"
+EVT="${2:?usage: state.sh <workspace> <event_type> [k=v ...]   OR   state.sh tail <workspace> [N=10]}"
 shift 2
 mkdir -p "$WS/.cc"
 F="$WS/.cc/state.json"

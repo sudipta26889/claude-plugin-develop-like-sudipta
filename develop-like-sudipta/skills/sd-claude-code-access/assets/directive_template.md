@@ -2,6 +2,29 @@
 
 > Replace ALL placeholders. Keep section structure; CC keys off the headers.
 
+## Operating mode (v4.6 — read FIRST)
+
+You are operating in **continuous-driver mode**. The plugin manager (Cowork or
+human) writes one phase directive at a time and triggers you. You do NOT wait
+for a confirmation ping between sub-tasks within a phase. After finishing the
+last task of this phase:
+
+1. Run the phase's verify-gate (static checks + tests) yourself before
+   declaring it done. The plugin will audit; don't rely on it to catch red.
+2. Append `state.sh phase_complete phase=<N>` if `~/.cache/ccbridge/state.sh`
+   is on PATH (it is by default after `/cc-drive` ran).
+3. STOP and emit a one-line summary on stdout. Do NOT start the next phase —
+   the manager will trigger phase N+1 with a new directive file.
+
+If you encounter a bug at ANY step (red unit test, red browser test, runtime
+exception that breaks a documented contract): apply the bug-driven TDD
+protocol in `references/bug_driven_tdd.md` — write a failing test FIRST,
+confirm red, then fix, then confirm green. No fix lands without a failing test.
+
+If you get stuck (>3 failed attempts on the same problem, or a required
+external resource is genuinely unreachable): emit a one-line `BLOCKED:` summary
+explaining the blocker. The manager will escalate. Do NOT loop indefinitely.
+
 ## Scope
 
 <2-4 sentences. Why does this phase exist? What gap does it close? What

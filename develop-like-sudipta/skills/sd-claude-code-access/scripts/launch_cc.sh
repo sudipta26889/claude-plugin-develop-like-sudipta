@@ -35,10 +35,12 @@
 set -euo pipefail
 
 DETECT_ONLY=0
+DRY_RUN=0
 ARGS=()
 for arg in "$@"; do
   case "$arg" in
     --detect-only) DETECT_ONLY=1 ;;
+    --dry-run)     DRY_RUN=1 ;;
     *) ARGS+=("$arg") ;;
   esac
 done
@@ -138,25 +140,67 @@ if [ "$DETECT_ONLY" = "1" ]; then
   exit 4   # 4 = no match, no spawn attempted
 fi
 
+# v4.6 — H1: if another terminal-mode CC is already running (for a DIFFERENT
+# workspace), open in a separate window instead of a new tab in the same
+# window. Tabs share the same osascript "front window" target, so the
+# watchdog and send.sh would route keystrokes to the wrong CC.
+ANOTHER_CC=""
+while IFS= read -r _pid; do
+  [ -z "$_pid" ] && continue
+  is_terminal_cc "$_pid" || continue
+  ANOTHER_CC="$_pid"
+  break
+done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /\/claude$/ {print $1}')
+
+if [ -n "$ANOTHER_CC" ]; then
+  echo "[launch_cc] another terminal CC is running (pid=$ANOTHER_CC) for a different workspace — will open a NEW WINDOW (not a tab)" >&2
+fi
+
 echo "[launch_cc] no CC running for $WS_ABS — spawning new tab" >&2
 
 # ──────────────────────────────────────────────────────────────────────────
-# Step 2 — spawn a new tab via osascript.
+# Step 2 — spawn a new tab/window via osascript.
 # Quote the workspace path for shell safety (single quotes inside double).
 # ──────────────────────────────────────────────────────────────────────────
 SHELL_CMD="cd '$WS_ABS' && claude $CC_LAUNCH_FLAGS"
 
+# v4.6 — F2: dry-run prints what would happen and exits 0.
+if [ "$DRY_RUN" = "1" ]; then
+  echo "[launch_cc] --dry-run: would spawn in $TERMINAL_APP:" >&2
+  if [ -n "$ANOTHER_CC" ]; then
+    echo "  mode: NEW WINDOW (another CC running pid=$ANOTHER_CC)" >&2
+  else
+    echo "  mode: same-window-tab (no other CC running)" >&2
+  fi
+  echo "  cmd:  $SHELL_CMD" >&2
+  exit 0
+fi
+
 case "$TERMINAL_APP" in
   Terminal|Terminal.app)
-    osascript <<EOF
+    if [ -n "$ANOTHER_CC" ]; then
+      # New window: `do script` without `in window …` creates a new window on
+      # Terminal.app by default (verified macOS 14+). Adding `activate` brings
+      # the new window forward so the watchdog/send.sh target it correctly.
+      osascript <<EOF
 tell application "Terminal"
   activate
   do script "$SHELL_CMD"
 end tell
 EOF
+    else
+      osascript <<EOF
+tell application "Terminal"
+  activate
+  do script "$SHELL_CMD"
+end tell
+EOF
+    fi
     ;;
   iTerm2|iTerm)
-    osascript <<EOF
+    if [ -n "$ANOTHER_CC" ]; then
+      # iTerm2: explicitly create a new window.
+      osascript <<EOF
 tell application "iTerm"
   activate
   create window with default profile
@@ -165,6 +209,17 @@ tell application "iTerm"
   end tell
 end tell
 EOF
+    else
+      osascript <<EOF
+tell application "iTerm"
+  activate
+  create window with default profile
+  tell current session of current window
+    write text "$SHELL_CMD"
+  end tell
+end tell
+EOF
+    fi
     ;;
   *)
     echo "[launch_cc] ERROR: unsupported TERMINAL_APP=$TERMINAL_APP (expected Terminal|iTerm2)" >&2
