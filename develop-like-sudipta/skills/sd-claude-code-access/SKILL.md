@@ -436,7 +436,13 @@ echo "Read \`.cc/phase-3.md\` and proceed." | ~/.cache/ccbridge/send.sh
 
 # Interrupt a hung CC
 ~/.cache/ccbridge/keys.sh esc
+```
 
+`audit.sh` is MANUAL — the watchdog does not auto-fire it. The manager (Cowork) runs it at
+phase checkpoints. The `/cc-audit` slash command is the user-facing wrapper that runs it
+once on-demand. There is no background auditing.
+
+```bash
 # Audit a phase
 bash ~/.cache/ccbridge/audit.sh /path/to/workspace 7
 
