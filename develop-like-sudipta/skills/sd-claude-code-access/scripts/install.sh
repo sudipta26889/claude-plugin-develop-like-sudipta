@@ -12,6 +12,7 @@ SCRIPTS=(
   nudge_if_stuck.sh audit.sh
   state.sh lock.sh diagnose.sh run_summary.sh
   install_precommit.sh
+  escalate.sh
 )
 
 for f in "${SCRIPTS[@]}"; do

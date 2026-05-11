@@ -84,6 +84,28 @@ while true; do
         if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
           "$DEST/state.sh" "$WORKSPACE" danger_blocked "fp=$fp" "pattern=$blocked" >/dev/null 2>&1 || true
         fi
+        # ADDITIVE escalation: a silent refusal stalls the run with no
+        # notification. Pipe a structured payload into escalate.sh so the
+        # workspace gets <workspace>/.cc/escalations.log + (optionally) an
+        # ESCALATE_CMD fan-out. Refusal itself is unchanged — escalation
+        # is purely a notification side-effect. Back-compat: skip if
+        # WORKSPACE is unset or escalate.sh is missing (post-install
+        # bridge mismatch).
+        if [ -n "${WORKSPACE:-}" ]; then
+          if [ -x "$DEST/escalate.sh" ]; then
+            # ~200-char snippet of the buffer so the log entry stays
+            # grep-friendly without dumping the whole screen.
+            snippet=$(echo "$buf" | tr '\n' ' ' | cut -c1-200)
+            {
+              echo "fp=$fp"
+              echo "matched=$blocked"
+              echo "prompt=$snippet"
+            } | "$DEST/escalate.sh" "$WORKSPACE" >>"$LOG" 2>&1 || \
+              echo "[$(date)] escalate.sh failed (fp=$fp matched=$blocked) — continuing" >>"$LOG"
+          else
+            echo "[$(date)] escalate.sh missing at $DEST/escalate.sh — skipping escalation (fp=$fp)" >>"$LOG"
+          fi
+        fi
       else
         echo "[$(date)] prompt fp=$fp - pressing return" >>"$LOG"
         "$DEST/keys.sh" return >>"$LOG" 2>&1

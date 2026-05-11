@@ -45,6 +45,61 @@ A catalog of failure modes that have actually happened, and the procedure for ea
    /tmp/ccbridge/keys.sh down && /tmp/ccbridge/keys.sh return  # for option 2
    ```
 
+## Watchdog refused a routine prompt — what to do
+
+**Symptoms:**
+- Watchdog log shows `DANGER fp=... matched=<pattern> - REFUSING to auto-approve`
+- The actual prompt on screen is something routine (e.g., reading a file, running tests) that you'd normally approve
+- The run is stalled — CC is waiting for Enter, watchdog won't press it
+- `<workspace>/.cc/escalations.log` has a fresh entry (this is the canonical signal — escalations.log is the on-disk receipt every refusal writes)
+
+**Cause:** A danger pattern matched a routine prompt. Two flavours:
+
+- **False positive in the pattern** — the regex was too loose (e.g., `delete` matched a noun in surrounding documentation, not a verb in a command). This is what the audit script's "loose" verdict warns about; see `danger_pattern_governance.md`.
+- **Phrasing ambush** — the rendered Terminal buffer contained words that *look* destructive but weren't part of the proposed action (e.g., the file being edited has `rm -rf` in a code comment). The watchdog matches against the whole visible buffer, not just the command.
+
+**Recovery:**
+
+| Step | What | Why |
+| ---- | ---- | --- |
+| 1 | `tail -20 <workspace>/.cc/escalations.log` | See timestamp, matched pattern, and prompt snippet. Confirms whether the refusal was recent and what triggered it. |
+| 2 | Read the actual buffer (`~/.cache/ccbridge/read.sh` or visually) | Decide: is this truly routine, or did the pattern catch something genuinely risky? |
+| 3 | Manually press Enter if routine: `~/.cache/ccbridge/keys.sh return` | Unblock the immediate run. CC will resume. |
+| 4 | Decide the longer-term fix (see below) | One press doesn't prevent the next stall. |
+| 5 | Re-run `scripts/audit_danger_patterns.sh` after editing | Confirm the change moves the pattern from "loose" to "healthy" and didn't kill destructive coverage. |
+
+**Longer-term fix — pick one:**
+
+- **The pattern itself is wrong.** Edit `scripts/danger_patterns.txt` to tighten it. Add a routine fixture in `evals/test_danger_patterns.sh` AND `scripts/audit_danger_patterns.sh` that captures the false positive, so the regression is locked in. See the "Required process to add a pattern" section of `danger_pattern_governance.md` — same discipline applies to tightening an existing one.
+- **The pattern is fine globally, but this project needs an exception.** Add an allow-comment to `<workspace>/.cc/danger_patterns_extra.txt`:
+  ```
+  # allow: <pattern> false-fires on our internal phrasing — example: ...
+  ```
+  This doesn't actually carve out an exception (extras are union-only, not subtraction) — but it documents the decision for the next operator. The real action is still tightening the global pattern.
+- **The phrasing ambush is genuinely unavoidable.** Some buffers will look scary. The watchdog erring on the side of "wake the human" is the correct trade-off; just press Enter and move on. Log it in `escalations.log` notes for the quarterly review.
+
+**Don't:**
+
+- Don't disable the watchdog because one prompt was a false positive — that's how `rm -rf /` ships to prod.
+- Don't add a workspace exception without also fixing the global pattern. The next workspace will hit the same false positive.
+- Don't ignore repeated entries in `escalations.log`. Three of the same pattern in a week means the audit script will likely flag it as loose next quarter — fix it now.
+
+**Wire up notifications (optional but recommended):**
+
+Export `ESCALATE_CMD` before starting the watchdog to get pushed alerts:
+
+```bash
+# ntfy.sh example
+export ESCALATE_CMD='curl -d @- https://ntfy.sh/your-private-topic'
+# Slack webhook example
+export ESCALATE_CMD='curl -X POST -H "Content-type: application/json" --data "{\"text\": \"$(cat)\"}" https://hooks.slack.com/...'
+~/.cache/ccbridge/start_watchdog.sh
+```
+
+`escalate.sh` will still write `escalations.log` as the local audit trail; `ESCALATE_CMD` is additive.
+
+Cross-link: `danger_pattern_governance.md` covers the deny-list discipline; this section is about what to do when discipline fails in practice.
+
 ## CC genuinely hung
 
 **Symptoms:**

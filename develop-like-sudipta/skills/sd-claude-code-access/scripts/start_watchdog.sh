@@ -18,11 +18,13 @@ if pgrep -f "$DEST/watchdog.sh" >/dev/null; then
   exit 0
 fi
 
-# Pass WORKSPACE + dryrun toggle through to background process.
-# Explicit forwarding (rather than relying on inherited env) makes the
-# dryrun example in danger_pattern_governance.md unambiguous.
+# Pass WORKSPACE + dryrun toggle + escalation hook through to background
+# process. Explicit forwarding (rather than relying on inherited env) makes
+# the dryrun example in danger_pattern_governance.md and the
+# ESCALATE_CMD example in failure_modes.md unambiguous.
 WORKSPACE="${WORKSPACE:-}" CCBRIDGE_DIR="$DEST" \
   WATCHDOG_DRYRUN="${WATCHDOG_DRYRUN:-}" \
+  ESCALATE_CMD="${ESCALATE_CMD:-}" \
   nohup "$DEST/watchdog.sh" >/dev/null 2>&1 &
 disown
 sleep 1
