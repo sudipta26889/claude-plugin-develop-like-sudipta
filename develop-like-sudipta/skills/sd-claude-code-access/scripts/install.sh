@@ -10,7 +10,7 @@ SCRIPTS=(
   send.sh read.sh read_history.sh keys.sh
   watchdog.sh start_watchdog.sh stop_watchdog.sh
   nudge_if_stuck.sh audit.sh
-  state.sh lock.sh diagnose.sh run_summary.sh
+  state.sh state_salvage.sh lock.sh diagnose.sh run_summary.sh
   install_precommit.sh
   escalate.sh
 )
