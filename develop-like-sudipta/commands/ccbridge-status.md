@@ -29,7 +29,7 @@ Pass the plugin path so it can read autoresearch baselines too. If the user's pl
 
 ### Step 2 — merge in Cowork scheduled-task data
 
-Call `mcp__scheduled-tasks__list_scheduled_tasks`. From the response, filter to tasks whose `taskId` starts with `ccbridge-` OR contains `autoresearch`. For each, render one line:
+Call `mcp__scheduled-tasks__list_scheduled_tasks`. From the response, filter to tasks whose `taskId` starts with `ccbridge-` (covers `ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`) OR contains `autoresearch`. For each, render one line:
 
 ```
   - <taskId> (cron <expr>) — next: <YYYY-MM-DD HH:MM local>, last: <YYYY-MM-DD HH:MM | never>, enabled: <bool>
@@ -64,7 +64,7 @@ If the shell script exit code was non-zero (problems detected), surface the FIRS
 
 PLUGIN
   version: 4.5.0
-  install: /Users/sudipta/Workspace/personal/claude-plugin-develop-like-sudipta/develop-like-sudipta
+  install: ~/Workspace/personal/claude-plugin-develop-like-sudipta/develop-like-sudipta
 
 BRIDGE (~/.cache/ccbridge/)
   scripts: 22 / 22 present
@@ -73,11 +73,12 @@ BRIDGE (~/.cache/ccbridge/)
 
 WATCHDOG
   status: running
-  pid=42118 WORKSPACE=/Users/sudipta/Workspace/personal/prodevs.in
+  pid=42118 WORKSPACE=~/Workspace/personal/prodevs.in
 
 SCHEDULED TASKS
   - ccbridge-aggregate-learnings  (cron 15 2 * * *) — next: 2026-05-12 02:15, last: 2026-05-11 02:22, enabled: true
   - ccbridge-distill-and-propose  (cron 30 3 * * 0) — next: 2026-05-17 03:30, last: 2026-05-11 03:37, enabled: true
+  - ccbridge-propose-fix-pr       (cron 0 9 * * 1)  — next: 2026-05-18 09:00, last: 2026-05-11 09:00, enabled: true
   - autoresearch-sd-cc-access     (Manual only)      — last: 2026-05-11 12:20, enabled: true
 
 LEARNINGS (last 7 days, all projects)

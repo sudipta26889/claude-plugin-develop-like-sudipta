@@ -183,6 +183,12 @@ The plugin layers three things on top of Claude Code: (a) skills that load progr
   - `feat(devserver)` — dev-server orchestration with `wait_for_dev_server.sh`, auto-start when down, port-probe with backoff (gap #10).
   - `feat(api)` — API-level testing reference for backend-only phases — pytest + requests/httpx pattern when no UI exists yet (gap #16).
   - `feat(ssh)` — SSH / remote-Mac substrate (Path D) — drive a headless Mac mini from Cowork via SSH + tmux; probe via `ssh_probe.sh` (gap #16).
+- **4.8.0** (2026-05-12) — F-AUTOPR: distill → CC writes fix → draft PR.
+  - New scheduled task `ccbridge-propose-fix-pr` (cron `0 9 * * 1`): walks `priors-*.md` from the latest distill, routes each cross-project signature through a dispatch table to the matching plugin file, spawns CC against the plugin repo clone, drives bug-driven TDD, opens a *draft* PR via `gh pr create --draft`. Maintainer reviews/merges — never auto-merge.
+  - New `scripts/dispatch_signature.sh` — bash 3.2 case-statement dispatch (testable in isolation; 13 signature prefixes covered).
+  - New `scripts/propose_fix_pr.sh` — procedure runner with `DRY_RUN=1` (no side effects), `PR_CAP=3` cap (overflow → one batched GH issue), `GH_OVERRIDE=mock` for evals. Installed to `~/.cache/ccbridge/` by `install.sh`.
+  - New evals: `test_propose_fix_pr_{dispatch,dryrun,cap}.sh` — 3 red → 3 green before commit.
+  - `/ccbridge-init` and `/ccbridge-status` updated to register/report on the third scheduled task.
 - **4.1.0** — Karpathy autoresearch (2026-05-11)
   - New skill: `autoresearch` (3-file architecture mapping — program.md + score.sh + target.txt).
   - Per-skill wiring: `sd-claude-code-access`, `develop-like-sudipta`, `code-hacker` each ship `autoresearch/{program.md, score.sh, target.txt, trigger_corpus.json, .baselines.json}`.

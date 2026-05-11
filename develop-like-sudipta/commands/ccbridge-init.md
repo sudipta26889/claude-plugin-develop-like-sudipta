@@ -1,5 +1,5 @@
 ---
-description: One-shot self-bootstrap of the v4.3 runtime-learning loop on this machine — installs bridge scripts, copies bundled scheduled-task SKILLs into Cowork's scan dir, and registers the two Cowork scheduled tasks (aggregate-learnings nightly + distill-and-propose weekly). Idempotent. Run once per machine after `develop-like-sudipta` plugin update.
+description: One-shot self-bootstrap of the runtime-learning loop on this machine — installs bridge scripts, copies bundled scheduled-task SKILLs into Cowork's scan dir, and registers the three Cowork scheduled tasks (aggregate-learnings nightly + distill-and-propose Sunday + propose-fix-pr Monday). Idempotent. Run once per machine after `develop-like-sudipta` plugin update.
 allowed-tools:
   - mcp__Desktop_Commander__start_process
   - mcp__Desktop_Commander__read_file
@@ -21,7 +21,7 @@ Run this once per machine after pulling/updating the `develop-like-sudipta` plug
 
 2. Calls `mcp__scheduled-tasks__list_scheduled_tasks` to inspect Cowork's current task registry.
 
-3. For each of the two required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`):
+3. For each of the three required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`):
    - If NOT present → call `mcp__scheduled-tasks__create_scheduled_task` to register it with the recommended cron.
    - If present → call `mcp__scheduled-tasks__update_scheduled_task` to refresh the prompt from the latest SKILL.md (so plugin updates flow into Cowork without manual edits).
 
@@ -49,6 +49,7 @@ Call `mcp__scheduled-tasks__list_scheduled_tasks`. Look for entries with `taskId
 
 - `ccbridge-aggregate-learnings`
 - `ccbridge-distill-and-propose`
+- `ccbridge-propose-fix-pr`
 
 ### Step 3 — Read the bundled SKILL.md as the source of truth
 
@@ -71,6 +72,11 @@ For each required task, read the SKILL.md from `~/Documents/Claude/Scheduled/<ta
 - Recommended cron: `30 3 * * 0` (every Sunday at 3:30 AM local — runs after Saturday's last aggregate).
 - Otherwise identical pattern to above.
 
+**For `ccbridge-propose-fix-pr`:**
+
+- Recommended cron: `0 9 * * 1` (every Monday at 09:00 local — runs after Sunday's distill, during waking hours so the maintainer sees draft PRs land in real time).
+- Otherwise identical pattern to above.
+
 ### Step 5 — Report
 
 Print a compact summary:
@@ -81,6 +87,7 @@ Print a compact summary:
 [ccbridge-init] scheduled tasks:
   - ccbridge-aggregate-learnings — registered (next run: 2026-MM-DD HH:MM)
   - ccbridge-distill-and-propose — registered (next run: 2026-MM-DD HH:MM)
+  - ccbridge-propose-fix-pr      — registered (next run: 2026-MM-DD HH:MM)
 [ccbridge-init] done. The closed loop is now live on this machine.
 ```
 

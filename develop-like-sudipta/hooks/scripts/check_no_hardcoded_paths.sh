@@ -28,12 +28,18 @@ SHIP_DIRS=(
 # Files to skip even within ship dirs:
 # - this script itself + its README (documents the bad pattern)
 # - test fixtures
+# - plugin.json: long-form `description` is an accreting changelog that
+#   QUOTES historical paths (the v4.3.3 entry literally references the
+#   `/Users/sudipta/Workspace/...` bug it FIXED). Nothing in plugin.json
+#   is interpreted as a path-to-execute by Claude Code; the field is pure
+#   narrative read into the model's routing context.
 EXEMPT_PATHS=(
   "develop-like-sudipta/hooks/scripts/check_no_hardcoded_paths.sh"
   "develop-like-sudipta/hooks/scripts/install_precommit_path_check.sh"
   "develop-like-sudipta/skills/sd-claude-code-access/evals"
   "develop-like-sudipta/skills/develop-like-sudipta/evals"
   "develop-like-sudipta/skills/code-hacker/evals"
+  "develop-like-sudipta/.claude-plugin/plugin.json"
 )
 
 is_exempt() {

@@ -19,6 +19,9 @@ SCRIPTS=(
   launch_cc.sh
   # v4.5 — at-a-glance health-check (also callable standalone)
   ccbridge_status.sh
+  # v4.8 — distill → CC writes fix → draft-PR pipeline. The dispatch table
+  # is its own script so the dryrun + cap evals can exercise it in isolation.
+  dispatch_signature.sh propose_fix_pr.sh
 )
 
 # v4.3 — bootstrap ccbridge data subdirs so learning.sh + register_project.sh
