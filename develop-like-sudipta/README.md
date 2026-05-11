@@ -1,8 +1,8 @@
 # develop-like-sudipta
 
-**Version:** 3.3.0
-**Tagline:** Battle-tested development discipline for Claude Code — 11 engineering pillars, real-browser verification, bug-driven TDD, and substrate-aware end-to-end Claude Code driving from Cowork.
-**v3.3.0 (May 2026):** Tier 1 hardening — safer watchdog, accurate audit, recoverable state, refreshed docs.
+**Version:** 4.0.0
+**Tagline:** Battle-tested development discipline for Claude Code — 11 engineering pillars, real-browser verification, bug-driven TDD, substrate-aware end-to-end CC driving from Cowork, cross-browser/mobile + a11y + streaming testing, worktree-aware orchestration, and commit-time bug-TDD enforcement via git hooks.
+**v4.0.0 (May 2026):** Tier 3 hardening complete — 3 new agents, 2 new git hooks, cross-browser/mobile Playwright projects, opt-in a11y, streaming-protocol testing, worktree integration, approval cadence, stale-spec detection, screenshot archival, trigger-phrase evals.
 **Author:** Sudipta Dhara — [github.com/sudipta26889](https://github.com/sudipta26889)
 **Repository:** [claude-plugin-develop-like-sudipta](https://github.com/sudipta26889/claude-plugin-develop-like-sudipta)
 
@@ -14,7 +14,11 @@ This plugin enforces 11 engineering pillars (Plan First, Code Quality, Env Sync,
 
 Starting at v3.0 the plugin bundles the `sd-claude-code-access` skill, which lets Cowork drive Claude Code on your Mac end-to-end. You hand Cowork a workspace path and a goal; it brainstorms with you, writes the PRD and plan, then drives a long-running Claude Code session through file-based phase directives, a permission-prompt watchdog, hang detection, and resume-after-crash. v3.1 added a verify gate — static checks plus unit/integration tests (auto-detected per project: pytest, jest/vitest, cargo, go test, etc.) — that MUST go green before any browser test fires, and a bug-driven TDD protocol that refuses to land any fix without a new failing test first (both a unit test and a Playwright spec must reproduce the bug, then turn green together with the existing regression suite).
 
-v3.2 added substrate detection. Earlier versions silently assumed `bash` plus `osascript` could reach your Mac; Cowork running outside that environment had no way to know what would actually work. Now every CC-driving session begins with a Step 0 probe of available MCPs — `Desktop_Commander` (Path A, preferred, direct on-Mac exec) → `computer-use` (Path B, fallback, `request_access` for Terminal at tier `click`) → manual (Path C, last resort, commands surfaced to the user). The chosen path and reason are reported back before anything runs.
+v3.2 added substrate detection. Earlier versions silently assumed `bash` plus `osascript` could reach your Mac; Cowork running outside that environment had no way to know what would actually work. Now every CC-driving session begins with a Step 0 probe of available MCPs — `Desktop_Commander` (Path A, preferred, direct on-Mac exec) → `computer-use` (Path B, fallback, `request_access` for Terminal at tier `click`) → manual (Path C, last resort, commands surfaced to the user) → SSH/remote-Mac (Path D, added in v3.4 for headless servers). The chosen path and reason are reported back before anything runs.
+
+v3.4 expanded the CC-driver toolkit: GitHub Actions e2e workflow auto-emission, structured test-output parsing (pytest/jest/vitest/cargo/go/maven), flake retry + whitelist, auth-state freshness, dev-server orchestration with auto-start, data-testid directive enforcement, API-level testing for backend-only phases, and the SSH/remote-Mac substrate.
+
+v4.0 closes the remaining skill gaps from the 24-gap audit. Three new isolated-context agents (`audit-agent`, `bug-triage-agent`, `playwright-spec-reviewer`) handle audit summarization, bug intake, and spec QA. Two new git hooks (`check_bug_id.sh`, `check_test_paired_with_src.sh`) enforce bug-TDD discipline at commit time. Cross-browser/mobile Playwright projects (`assets/playwright.config.template.ts`) and opt-in `axe-playwright` a11y assertions widen real-browser coverage. WebSocket / SSE / HTTP-streaming testing patterns (`references/streaming_testing.md`) cover non-request-response surfaces. Worktree-aware orchestration (`references/worktree_integration.md`) keeps driver lock + WORKSPACE resolution sane across parallel feature branches. Approval cadence with `pause_at` config gives users explicit human checkpoints. Source-hash compare auto-detects stale per-phase specs and triggers regen. Old screenshots get archived and stale specs quarantined via `scripts/cleanup_test_artifacts.sh`. Trigger-phrase eval coverage for substrate / verify-gate / bug-TDD is now in `evals/`.
 
 ---
 
@@ -60,6 +64,9 @@ v3.2 added substrate detection. Earlier versions silently assumed `bash` plus `o
 | `security-reviewer` | After endpoint/auth/input code | OWASP-only context, no noise. |
 | `dep-researcher` | Before any package install | Searches latest, compares alternatives, checks banned lists. |
 | `env-sync-checker` | After env var add/remove | Verifies every config surface in sync. |
+| `audit-agent` | After a CC-driving session ends | Runs `audit.sh`, summarizes drift / refusal / escalation logs in isolated context. |
+| `bug-triage-agent` | When a bug report arrives | Classifies severity, extracts repro steps, drafts the failing-test pair before `/fix`. |
+| `playwright-spec-reviewer` | After per-phase spec emission | Reviews generated `phase-N.spec.ts` for selector hygiene, brittle assertions, a11y opt-ins. |
 
 ### Hooks
 
@@ -69,7 +76,9 @@ v3.2 added substrate detection. Earlier versions silently assumed `bash` plus `o
 | `post-edit-check.sh` | PostToolUse (Write/Edit) | Env vars, secrets, lint (ruff F401/F841), Dockerfile, `.env` sync. |
 | `completion-gate.sh` | Stop | Tests pass, coverage ≥80%, TODO count, baseline preserved. |
 | `state-saver.sh` | PreCompact | Auto-save plan/progress state to `.claude/plans/`. |
-| `setup.sh` | One-time install | Wires the four hooks above into your Claude Code config. |
+| `check_bug_id.sh` | pre-commit (opt-in via `setup.sh`) | Blocks commits to `/fix/*` branches that lack a `Bug:` trailer + linked failing-test commit. |
+| `check_test_paired_with_src.sh` | pre-commit (opt-in via `setup.sh`) | Blocks commits where production code is added without a paired test file change. |
+| `setup.sh` | One-time install | Wires the hooks above into your Claude Code config and (opt-in) installs the git pre-commit hooks. |
 
 ---
 
@@ -157,6 +166,26 @@ The plugin layers three things on top of Claude Code: (a) skills that load progr
   - `feat(safety)` — watchdog escalation on refused prompts: appends to `.cc/escalations.log` and fires optional `ESCALATE_CMD` hook (gap #3).
   - `feat(state)` — `state.json` salvage script for corrupted JSONL recovery (`state_salvage.sh`) (gap #4).
   - `docs(readme + prompts)` — README refreshed for v3.2/v3.3; CC-driver prompt drop-ins now lead with the Path A/B/C substrate detection clause (gaps #23 + #24).
+- **3.4.0** (2026-05-11) — Tier 2 CC-driver expansion (8 gaps closed):
+  - `feat(ci)` — GitHub Actions e2e workflow auto-emission so CI runs the same Playwright suite the per-phase driver runs (gap #5).
+  - `feat(parse)` — structured test-output parser across pytest / jest / vitest / cargo / go-test / maven; driver reads pass/fail counts and per-test names instead of substring sniffing (gap #6).
+  - `feat(testids)` — `data-testid` directive enforcement: per-phase directives explicitly require stable selectors and the spec emitter refuses to write XPath/index-based assertions (gap #7).
+  - `feat(auth)` — auth-state lifecycle: `check_auth_state.sh` validates storageState freshness before browser-test runs, auto-refreshes when stale (gap #8).
+  - `feat(flake)` — flake retry + whitelist with documented decision tree; retries are bounded and recorded, whitelist entries require a comment (gap #9).
+  - `feat(devserver)` — dev-server orchestration with `wait_for_dev_server.sh`, auto-start when down, port-probe with backoff (gap #10).
+  - `feat(api)` — API-level testing reference for backend-only phases — pytest + requests/httpx pattern when no UI exists yet (gap #16).
+  - `feat(ssh)` — SSH / remote-Mac substrate (Path D) — drive a headless Mac mini from Cowork via SSH + tmux; probe via `ssh_probe.sh` (gap #16).
+- **4.0.0** (2026-05-11) — Tier 3 final hardening (10 gaps closed; 24-gap audit complete):
+  - `feat(cleanup)` — `scripts/cleanup_test_artifacts.sh`: archive screenshots older than N days, quarantine stale specs whose source markdown no longer exists (gap #12).
+  - `feat(crossbrowser)` — `assets/playwright.config.template.ts` ships `chromium / firefox / webkit / Mobile Safari / Mobile Chrome` projects out of the box (gap #13).
+  - `feat(a11y)` — opt-in `axe-playwright` a11y assertions gated by `.cc/config.json → axe_enabled: true`; spec template uses `A11Y BEGIN/END` markers so disabled mode emits clean output (gap #14).
+  - `feat(streaming)` — `references/streaming_testing.md` documents WebSocket / SSE / HTTP-chunked testing patterns and assertion strategies (gap #15).
+  - `feat(agents)` — three new isolated-context agents: `audit-agent`, `bug-triage-agent`, `playwright-spec-reviewer` (gap #17).
+  - `feat(hooks)` — two new git pre-commit hooks: `check_bug_id.sh` (enforces `Bug:` trailer + failing-test commit on `/fix/*` branches), `check_test_paired_with_src.sh` (no production code without paired test change) (gap #18).
+  - `feat(worktree)` — `references/worktree_integration.md` documents driving CC inside a git worktree: WORKSPACE resolution, driver lock per-worktree, multi-worktree parallelism, merge-time test bank handling (gap #19).
+  - `feat(cadence)` — approval cadence with `pause_at` config: explicit human checkpoints after planning, after phase verify, before commit, before push (gap #20).
+  - `feat(specs)` — automated stale-spec detection: source-hash compare between `## Steps` content in `phase-N.md` and the `// source-hash:` header in `phase-N.spec.ts`; triggers regen on drift (gap #21).
+  - `feat(evals)` — trigger-phrase coverage for substrate detection, verify-gate enforcement, and bug-TDD onset in `evals/*.json` (gap #22).
 
 ---
 

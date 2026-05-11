@@ -1,16 +1,17 @@
 # Claude Code driver — drop-in prompts for Cowork
 
-After installing the `develop-like-sudipta` plugin v3.2.0+, paste the variant that matches your scenario into a fresh Cowork chat. The `sd-claude-code-access` skill is bundled inside the plugin and triggers on the keywords below.
+After installing the `develop-like-sudipta` plugin v4.0.0, paste the variant that matches your scenario into a fresh Cowork chat. The `sd-claude-code-access` skill is bundled inside the plugin and triggers on the keywords below.
 
 ---
 
 ## How Cowork actually reaches your Mac
 
-Cowork doesn't have a direct shell into your Mac — it has to pick a substrate from the MCPs available in the current session. Starting in v3.2 every variant below begins with a substrate probe (Step 0) and reports which path was chosen and why before running anything. There are three paths:
+Cowork doesn't have a direct shell into your Mac — it has to pick a substrate from the MCPs available in the current session. Starting in v3.2 every variant below begins with a substrate probe (Step 0) and reports which path was chosen and why before running anything. There are four paths:
 
 - **Path A — `Desktop_Commander` (preferred).** If `mcp__Desktop_Commander__*` tools are present in the session, Cowork executes commands directly on your Mac through that MCP. Fastest and most reliable; no app permissions needed.
 - **Path B — `computer-use` (fallback).** If `mcp__computer-use__*` is present but `Desktop_Commander` is not, Cowork calls `request_access` for `Terminal` (or `iTerm2`) at tier `click` — enough to bring the app forward and click, but not to type. Typing happens via the SDK's keyboard relay paths described in the skill. Slower, requires per-app approval.
 - **Path C — manual (last resort).** Neither MCP available: Cowork surfaces each command for you to paste into your Terminal. No autonomous execution, but the discipline still applies — directives, watchdog plan, audit, and browser-test commands are still written for you.
+- **Path D — SSH / remote-Mac (added in v3.4).** When CC runs on a headless Mac mini or other remote host reachable via SSH + tmux: probe via the skill's `scripts/ssh_probe.sh`, then drive through a tmux session over SSH. Useful for always-on dev boxes or CI-like Macs. Falls back to Path C if SSH isn't reachable.
 
 Full detail on probing, fallbacks, and what each path can and cannot do lives in the skill's `references/substrate_and_access.md`.
 
@@ -194,6 +195,13 @@ console + network assertions, pass/fail/timestamps), emit Playwright spec
 at `docs/e2e-testing/specs/phase-<N>.spec.ts`. Report green/red with the
 file paths.
 
+**Backend-only phase?** If the phase has no UI yet (pure API/job/migration),
+route to the API-testing path described in `references/api_testing.md`
+instead of opening Chrome — pytest + httpx/requests against the dev server,
+evidence written to the same `docs/e2e-testing/phase-<N>-<slug>.md` shape.
+The skill auto-detects backend-only phases from the directive (no
+`browser:` block / no `data-testid` references) and routes accordingly.
+
 If red: bundle evidence into `.cc/phase-<N>-fix.md` so I can ship it to CC.
 ```
 
@@ -255,4 +263,4 @@ Shortcut: `/e2e-suite <workspace-path>` once the plugin is installed.
 
 ---
 
-**All 6 variants now require substrate detection as Step 0.** If Cowork's tool list doesn't show `Desktop_Commander` or `computer-use`, expect Path C — Cowork will surface commands for you to run manually. See the skill's `references/substrate_and_access.md` for the full probing protocol and the per-path capability matrix.
+**All 6 variants now require substrate detection as Step 0.** If Cowork's tool list doesn't show `Desktop_Commander` or `computer-use`, expect Path C (manual) or Path D (SSH/remote-Mac if SSH is reachable) — Cowork will surface commands for you to run manually or pipe them through tmux over SSH. See the skill's `references/substrate_and_access.md` for the full probing protocol and the per-path capability matrix.
