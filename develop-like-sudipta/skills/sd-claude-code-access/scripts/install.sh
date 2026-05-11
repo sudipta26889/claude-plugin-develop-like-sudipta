@@ -22,6 +22,20 @@ SCRIPTS=(
 mkdir -p "$DEST/learnings" "$DEST/aggregated" "$DEST/distillation"
 [ -f "$DEST/projects.json" ] || echo '{"version":1,"projects":[]}' > "$DEST/projects.json"
 
+# v4.3.3 — copy aggregate/distill scripts into the canonical bridge dir so
+# the scheduled tasks have a STABLE per-machine path to call, independent
+# of where the plugin happens to be installed on disk. The bundled scheduled-
+# task SKILL.md files reference these paths under ~/.cache/ccbridge/, NOT the
+# plugin-relative path that would break the moment the plugin is re-installed
+# at a different location on a different machine.
+AUTORESEARCH_SCRIPTS_DIR="$HERE/../../autoresearch/scripts"
+for f in aggregate_learnings.sh distill_learnings.sh; do
+  if [ -f "$AUTORESEARCH_SCRIPTS_DIR/$f" ]; then
+    cp -f "$AUTORESEARCH_SCRIPTS_DIR/$f" "$DEST/$f"
+    chmod +x "$DEST/$f"
+  fi
+done
+
 for f in "${SCRIPTS[@]}"; do
   cp -f "$HERE/$f" "$DEST/$f"
   chmod +x "$DEST/$f"

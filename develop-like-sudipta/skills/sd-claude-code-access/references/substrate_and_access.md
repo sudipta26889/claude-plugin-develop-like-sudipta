@@ -13,7 +13,7 @@ This document defines the **substrate detection ladder** Cowork must walk throug
 | **B. computer-use MCP** | `mcp__computer-use__*` controls the Mac via screenshots + clicks | slow | **Terminal/iTerm are tier-click — typing IS blocked at MCP level**; must shell out to osascript to actually type | Cowork desktop app on macOS, computer-use granted |
 | **C. Manual / user-driven** | Tell the user to run install + start-watchdog commands themselves | n/a | none | always — last-resort fallback |
 
-**Important reality:** Cowork's bash tool runs in a Linux sandbox. It cannot run `osascript`. It cannot write to `~/.cache/ccbridge/` on the user's Mac. It can only read from user-selected mounted folders (`/Users/sudipta/Workspace/...` mapped via `/sessions/.../mnt/...`). So **the sandbox bash is not a viable path** for driving CC — it's only useful for editing files in mounted dirs.
+**Important reality:** Cowork's bash tool runs in a Linux sandbox. It cannot run `osascript`. It cannot write to `~/.cache/ccbridge/` on the user's Mac. It can only read from user-selected mounted folders (e.g. `~/Workspace/...` on macOS, mapped via `/sessions/.../mnt/...` inside the sandbox). So **the sandbox bash is not a viable path** for driving CC — it's only useful for editing files in mounted dirs.
 
 ## Detection ladder (run at session start, in this exact order)
 

@@ -36,10 +36,10 @@ Use `mcp__Desktop_Commander__*` for the shell step. Cowork's sandbox bash cannot
 ### Step 1 — Run the shell bootstrap
 
 ```bash
-bash /Users/sudipta/Workspace/personal/claude-plugin-develop-like-sudipta/develop-like-sudipta/skills/sd-claude-code-access/scripts/setup_ccbridge.sh
+bash ~/Workspace/personal/claude-plugin-develop-like-sudipta/develop-like-sudipta/skills/sd-claude-code-access/scripts/setup_ccbridge.sh
 ```
 
-(Path will differ on other machines — resolve via `${CLAUDE_PLUGIN_ROOT}` or by querying the plugin install dir; the standard install path on the user's primary Mac is the one above.)
+`~` resolves to each machine's home dir, so this works portably as long as the plugin is cloned to `Workspace/personal/claude-plugin-develop-like-sudipta` under the user's home. On any machine where the plugin lives elsewhere, resolve via `${CLAUDE_PLUGIN_ROOT}` or query the plugin install dir manually.
 
 Capture stdout. Confirm both `[install]` lines AND `scheduled-task SKILL installed: <name>` lines are present.
 
