@@ -108,7 +108,12 @@ if [ -n "$WS" ]; then
       # because it sits immediately before the closing `)` or string-quote;
       # `:*` followed by anything else (e.g. ":*:foo", ":*x") is the stray
       # case `claude --doctor` flags.
-      STRAY=$(grep -oE ':\*[^)"]' "$SLF" 2>/dev/null | wc -l | tr -d ' ')
+      #
+      # `|| echo 0` on the pipeline: grep exits 1 when there are zero
+      # matches and pipefail (set at top of script) propagates that 1,
+      # which would otherwise abort under set -e before we print the
+      # result. Best-effort report — H4 must NEVER fail the diagnostic.
+      STRAY=$( { grep -oE ':\*[^)"]' "$SLF" 2>/dev/null | wc -l | tr -d ' '; } || echo 0)
       if [ "${STRAY:-0}" -gt 0 ] 2>/dev/null; then
         echo "  ⚠ $STRAY rules with stray \":*\" pattern (claude --doctor will flag)"
       else
