@@ -121,7 +121,7 @@ detect_cc_for_workspace() {
       found_pid="$pid"
       break
     fi
-  done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /\/claude$/ {print $1}')
+  done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /^claude$|\/claude$/ {print $1}')
   # v4.5.1 — ALWAYS return 0 + echo (possibly empty). Otherwise the function's
   # exit status (1 when found_pid is empty) propagates through $(...) and
   # set -euo pipefail aborts the caller before it can fall into the spawn
@@ -155,7 +155,7 @@ while IFS= read -r _pid; do
   is_terminal_cc "$_pid" || continue
   ANOTHER_CC="$_pid"
   break
-done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /\/claude$/ {print $1}')
+done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /^claude$|\/claude$/ {print $1}')
 
 if [ -n "$ANOTHER_CC" ]; then
   echo "[launch_cc] another terminal CC is running (pid=$ANOTHER_CC) for a different workspace — will open a NEW WINDOW (not a tab)" >&2

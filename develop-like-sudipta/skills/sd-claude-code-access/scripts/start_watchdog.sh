@@ -58,7 +58,7 @@ if [ -z "${WORKSPACE:-}" ]; then
     _tty=$(ps -o tty= -p "$_pid" 2>/dev/null | tr -d ' ')
     [ -n "$_tty" ] && [ "$_tty" != "??" ] || continue
     CC_PID="$_pid"   # keep iterating; last match wins (most recently spawned)
-  done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /\/claude$/ {print $1}')
+  done < <(ps -axo pid=,command= 2>/dev/null | awk '$2 ~ /^claude$|\/claude$/ {print $1}')
   if [ -n "${CC_PID:-}" ]; then
     # macOS lsof: line 2 of `-d cwd` output's last column is the cwd path.
     # Wrap in `|| true` because lsof can exit non-zero on transient race with
