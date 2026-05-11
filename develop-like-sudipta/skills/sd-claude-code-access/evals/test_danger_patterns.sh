@@ -27,6 +27,8 @@ DESTRUCTIVE=(
   "rm -rf /"
   "rm -rf ~"
   "rm -rf ~/"
+  "rm --recursive --force /var"
+  "rm --recursive /tmp/x"
   "sudo rm -rf /var/lib"
   "dd if=/dev/zero of=/dev/sda"
   "mkfs.ext4 /dev/sdb1"
@@ -114,6 +116,9 @@ ROUTINE=(
   "Edit file /etc/hosts to add line"
   "Read the rm command documentation"
   "Discussing how rm works in a comment"
+  # Counter-example for long-form rm flags: \brm\b word boundary must not
+  # match `helm --recursive` despite the "rm" substring inside "helm".
+  "helm --recursive install mychart ./mychart"
 )
 
 # Read patterns once into an array (skip blanks + comments).

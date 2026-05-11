@@ -65,8 +65,11 @@ The extras path is opt-in: if the file is absent, the watchdog behaves exactly a
 Before adopting a new pattern (especially a per-project one), you can run the watchdog in dryrun:
 
 ```bash
-WATCHDOG_DRYRUN=1 ./start_watchdog.sh
+# After `install.sh` has run, the scripts live in ~/.cache/ccbridge/.
+WATCHDOG_DRYRUN=1 ~/.cache/ccbridge/start_watchdog.sh
 ```
+
+`start_watchdog.sh` explicitly forwards `WATCHDOG_DRYRUN` (and `WORKSPACE`, `CCBRIDGE_DIR`) into the backgrounded `watchdog.sh` process, so this invocation is sufficient — no extra `export` needed.
 
 In dryrun, when a pattern matches:
 

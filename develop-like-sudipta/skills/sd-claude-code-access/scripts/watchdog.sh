@@ -9,15 +9,29 @@
 DEST="${CCBRIDGE_DIR:-$HOME/.cache/ccbridge}"
 LOG="$DEST/watchdog.log"
 DANGER="$DEST/danger_patterns.txt"
-# Optional per-project deny-list at <workspace>/.cc/danger_patterns_extra.txt.
-# Unioned with the base file at each check (read fresh; edits take effect
-# without restarting the watchdog).
-EXTRA=""
-if [ -n "${WORKSPACE:-}" ] && [ -f "$WORKSPACE/.cc/danger_patterns_extra.txt" ]; then
-  EXTRA="$WORKSPACE/.cc/danger_patterns_extra.txt"
+# Optional per-project deny-list path. Resolved here, but existence is
+# checked *inside* the poll loop so a file created after watchdog start
+# is picked up on the next poll — no restart needed.
+EXTRA_PATH=""
+if [ -n "${WORKSPACE:-}" ]; then
+  EXTRA_PATH="$WORKSPACE/.cc/danger_patterns_extra.txt"
+fi
+# Hard-require mktemp. Predictable /tmp paths are a symlink-attack risk.
+# macOS and every supported Linux ship mktemp at /usr/bin/mktemp.
+if ! command -v mktemp >/dev/null 2>&1 ; then
+  echo "fatal: mktemp not available on PATH — refusing to start watchdog" >&2
+  exit 1
 fi
 DRYRUN="${WATCHDOG_DRYRUN:-0}"
-echo "[$(date)] watchdog started, pid=$$, danger=$DANGER, extras=${EXTRA:-<none>}, dryrun=$DRYRUN, workspace=${WORKSPACE:-<unset>}" >>"$LOG"
+# Track the deny-source temp file at the script scope so the EXIT trap
+# can clean it up on SIGTERM/SIGINT or normal exit. Empty when no
+# temp file exists.
+DENY_SRC=""
+cleanup() {
+  [ -n "$DENY_SRC" ] && rm -f "$DENY_SRC" 2>/dev/null
+}
+trap cleanup EXIT INT TERM
+echo "[$(date)] watchdog started, pid=$$, danger=$DANGER, extras_path=${EXTRA_PATH:-<none>}, dryrun=$DRYRUN, workspace=${WORKSPACE:-<unset>}" >>"$LOG"
 last_seen=""
 PROMPT_PATTERN='Do you want to (proceed|make this edit|allow|continue)'
 while true; do
@@ -26,10 +40,16 @@ while true; do
     fp=$(echo "$buf" | shasum -a 256 | cut -c1-12)
     if [ "$fp" != "$last_seen" ]; then
       blocked=""
+      # Re-check extras file existence per cycle so files created
+      # after the watchdog started are picked up automatically.
+      EXTRA=""
+      if [ -n "$EXTRA_PATH" ] && [ -f "$EXTRA_PATH" ]; then
+        EXTRA="$EXTRA_PATH"
+      fi
       # Build the effective deny-list: base + optional per-project extras.
       DENY_SRC=""
       if [ -f "$DANGER" ] || [ -n "$EXTRA" ]; then
-        DENY_SRC=$(mktemp 2>/dev/null || echo "/tmp/watchdog.deny.$$")
+        DENY_SRC=$(mktemp)
         : > "$DENY_SRC"
         [ -f "$DANGER" ] && cat "$DANGER" >> "$DENY_SRC"
         [ -n "$EXTRA" ] && { echo ""; cat "$EXTRA"; } >> "$DENY_SRC"
@@ -44,6 +64,7 @@ while true; do
           fi
         done < "$DENY_SRC"
         rm -f "$DENY_SRC" 2>/dev/null || true
+        DENY_SRC=""
       fi
       if [ -n "$blocked" ] && [ "$DRYRUN" = "1" ]; then
         # Dryrun: log intent, then fall through to the approve branch so

@@ -28,6 +28,8 @@ fi
 DESTRUCTIVE=(
   "rm -rf /"
   "rm -rf ~/"
+  "rm --recursive --force /var"
+  "rm --recursive /tmp/x"
   "sudo rm -rf /var/lib"
   "dd if=/dev/zero of=/dev/sda"
   "dd if=image.iso of=/dev/sdb"
@@ -104,6 +106,7 @@ ROUTINE=(
   "UPDATE users SET name='x' WHERE id=1"
   "Edit file /etc/hosts to add line"
   "Read the rm command documentation"
+  "helm --recursive install mychart ./mychart"
 )
 
 count_matches() {

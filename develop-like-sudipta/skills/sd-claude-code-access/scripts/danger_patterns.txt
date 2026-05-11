@@ -9,6 +9,10 @@
 
 # Filesystem destruction
 \brm[[:space:]]+(-[a-z]*r[a-z]*[fF]?|-[a-z]*[fF][a-z]*r)\b
+# Long-form rm flags — `rm --recursive --force /var` bypasses the short-flag
+# regex above. \brm\b anchors to the literal command; `helm --recursive` etc.
+# don't match because of the word boundary.
+\brm[[:space:]]+(--recursive|--force)\b
 \bsudo[[:space:]]+rm\b
 \bdd[[:space:]]+if=/dev/(zero|random|urandom)\b
 \bdd[[:space:]]+if=\b
