@@ -38,14 +38,43 @@ Resolution order: env > `.cc/config.json` > `package.json` > default.
 
 ## Auth handling
 
-If the feature is behind a login wall:
+If the feature is behind a login wall, every browser-test step starts with a freshness check via `check_auth_state.sh`. **Don't skip this** — without it, an expired session lands you on a login form and the next assertion fails against the wrong DOM.
 
-1. First phase that hits auth → drive Chrome through the login flow once. Capture the storage state.
-2. Save to `<workspace>/.cc/auth/storage-state.json` (gitignored).
-3. Subsequent phases → `mcp__Claude_in_Chrome__navigate` with the stored session (or replay cookies via `javascript_tool`).
-4. If session expires mid-run → detect via `read_page` returning a login form → re-run the login flow, update storage state, retry.
+```bash
+bash ~/.cache/ccbridge/check_auth_state.sh <workspace>
+```
 
-Never bake credentials into the markdown or spec. Use env vars (`E2E_USER`, `E2E_PASS`) and reference them in the Playwright fixture.
+The script prints exactly one token on stdout and uses the exit code to classify the verdict:
+
+| Reason | Exit | What it means | Action |
+|---|---|---|---|
+| `fresh` | 0 | Storage state recent + cookies valid (+ liveness check passed if configured) | Proceed to the browser test |
+| `missing` | 1 | No `<workspace>/.cc/auth/storage-state.json` on disk | Run the project's login flow once, persist via the Chrome MCP's storage-state save |
+| `stale-by-age` | 2 | File older than `auth_max_age_minutes` (default 30) | Refresh — re-drive the login flow OR re-save existing session |
+| `stale-by-cookie-expiry` | 3 | Critical session cookies (`session`, `auth`, `token`, `JSESSIONID`, `sb-*`) expired | Re-drive login flow |
+| `stale-by-401` | 4 | Liveness `GET` returned 401/403 | Server-side session revoked — re-drive login flow |
+
+On any non-zero exit: drive the login flow once with the Claude-in-Chrome MCP (`navigate` + `form_input` + `computer` click on submit), save fresh storage state, then **re-run `check_auth_state.sh`** until it returns `fresh`. Only then call `mcp__Claude_in_Chrome__navigate` for the actual feature under test.
+
+The driver loop pattern:
+
+```bash
+# Pseudocode — wire into the per-phase browser-test directive.
+reason="$(bash ~/.cache/ccbridge/check_auth_state.sh "$WS")"
+case "$reason" in
+  fresh) ;;                                  # go
+  missing|stale-by-age|stale-by-cookie-expiry|stale-by-401)
+    # signal CC to drive login_flow.md, then refresh storage state
+    state.sh auth_refresh_required reason="$reason"
+    ;;
+esac
+```
+
+Configuration via `<workspace>/.cc/config.json`:
+- `auth_max_age_minutes` — max age before age-based staleness fires (default 30).
+- `auth_health_url` — optional URL hit with the cookies to verify the session is still valid server-side (e.g. `https://app.local/api/me`). Skip it if you don't have a cheap authenticated endpoint.
+
+Never bake credentials into the markdown or spec. Use env vars (`E2E_USER`, `E2E_PASS`) and reference them in the Playwright fixture. The login flow markdown at `<workspace>/.cc/auth/login_flow.md` describes the one-time sequence (URL, selectors, success criterion) and reads credentials from the env at run time.
 
 ## Per-step Chrome MCP actions
 
