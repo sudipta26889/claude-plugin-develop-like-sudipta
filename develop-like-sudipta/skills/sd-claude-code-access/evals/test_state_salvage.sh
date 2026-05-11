@@ -7,7 +7,7 @@
 # corruption, backs up the original, drops malformed lines, and rewrites
 # a clean state.json so cc-resume can read it again.
 #
-# Five cases:
+# Cases:
 #   1. No file present              -> exits 0, "no state.json to salvage"
 #   2. Already-clean JSONL          -> exits 0, "nothing to do", file unchanged
 #   3. Partial corruption           -> exits 0, N good + M bad counted,
@@ -16,6 +16,17 @@
 #                                      backup exists
 #   5. Empty (zero-byte) file       -> exits 0, "nothing to do" (an empty
 #                                      JSONL stream is trivially valid)
+#   6. (code-review) TMP file is created in same dir as state.json — see
+#      `mktemp "$STATE_DIR/.state-salvage.XXXXXX"` in state_salvage.sh.
+#      Verified by inspection; an integration assertion would require
+#      racing the script which is too flaky for a smoke test.
+#   7. python3 missing on PATH      -> exits 2 with "python3 required"
+#                                      message, state.json untouched, no
+#                                      backup created (silent-destruction
+#                                      regression guard)
+#   8. (code-review) Backup name embeds the salvage process PID
+#      (`${STATE_FILE}.bak.${TS}.${$}`) so two invocations in the same
+#      UTC second produce distinct backups. Verified by inspection.
 #
 # Bash 3.2 compatible. No `wait -n`, no `mapfile`, no associative arrays.
 #
@@ -246,6 +257,42 @@ if ls "$WS5/.cc/"state.json.bak.* >/dev/null 2>&1; then
   fail "unexpected backup for empty file"
 else
   pass "no backup made for empty file"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 7 — python3 missing on PATH (regression guard against silent destruction)
+# ---------------------------------------------------------------------------
+echo "-- Case 7: python3 missing on PATH (must refuse, must not modify) --"
+WS7="$(mkws)"
+cat > "$WS7/.cc/state.json" <<'EOF'
+{"ts":"2026-05-10T01:00:00Z","event":"phase_start","phase":"3"}
+{"ts":"2026-05-10T01:00:30Z","event":"prompt_approved","fp":"deadbeef"}
+EOF
+EXPECTED_SHA7="$(shasum "$WS7/.cc/state.json" 2>/dev/null | awk '{print $1}')"
+# Empty PATH means no commands resolve, including python3. We still
+# invoke bash by absolute path. Capture stderr to inspect the message.
+OUT7="$(PATH="" /bin/bash "$SALVAGE" "$WS7" 2>&1)"
+RC7=$?
+if [ $RC7 -eq 2 ]; then
+  pass "exit code 2 when python3 missing (got $RC7)"
+else
+  fail "expected exit 2, got $RC7 (output: $OUT7)"
+fi
+if printf '%s' "$OUT7" | grep -qi "python3"; then
+  pass "stderr mentions python3 requirement"
+else
+  fail "expected python3 message in stderr: $OUT7"
+fi
+ACTUAL_SHA7="$(shasum "$WS7/.cc/state.json" 2>/dev/null | awk '{print $1}')"
+if [ "$EXPECTED_SHA7" = "$ACTUAL_SHA7" ]; then
+  pass "state.json NOT modified (sha matches)"
+else
+  fail "state.json was modified — silent-destruction regression!"
+fi
+if ls "$WS7/.cc/"state.json.bak.* >/dev/null 2>&1; then
+  fail "unexpected backup created when python3 missing"
+else
+  pass "no backup created (correct — we refused before writing)"
 fi
 
 # ---------------------------------------------------------------------------

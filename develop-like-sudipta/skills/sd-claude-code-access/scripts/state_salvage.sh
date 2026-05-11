@@ -35,6 +35,16 @@ fi
 STATE_FILE="$WS/.cc/state.json"
 
 # --------------------------------------------------------------------------
+# Hard dependency: python3 is used for JSON validation. If it's missing,
+# every line would classify as BAD and we'd silently destroy the file —
+# fail loudly instead.
+# --------------------------------------------------------------------------
+command -v python3 >/dev/null 2>&1 || {
+  echo "state_salvage: python3 required but not found on PATH" >&2
+  exit 2
+}
+
+# --------------------------------------------------------------------------
 # 1. Missing file — idempotent no-op.
 # --------------------------------------------------------------------------
 if [ ! -e "$STATE_FILE" ]; then
@@ -66,7 +76,12 @@ fi
 #    count GOOD / BAD as we go. If BAD == 0 at the end the file is already
 #    clean; otherwise we promote TMP into place.
 # --------------------------------------------------------------------------
-TMP="$(mktemp "${TMPDIR:-/tmp}/state-salvage.XXXXXX")"
+# Same directory as state.json → atomic rename guaranteed (mv across
+# filesystems silently falls back to copy+unlink, which is NOT atomic
+# and could expose a partial state.json to a concurrent reader).
+# Leading dot keeps the temp file hidden from a casual `ls`.
+STATE_DIR="$(dirname "$STATE_FILE")"
+TMP="$(mktemp "$STATE_DIR/.state-salvage.XXXXXX")"
 # Cleanup on any exit path before we've moved TMP into place.
 trap 'rm -f "$TMP"' EXIT INT TERM
 
@@ -102,12 +117,19 @@ fi
 
 # --------------------------------------------------------------------------
 # 5. Salvage: back up original, atomically replace with cleaned file.
-#    Timestamp is UTC and sortable so successive runs don't collide.
+#    Timestamp is UTC and sortable; PID guards against same-second
+#    collisions (wrapper retries, parallel invocations).
 # --------------------------------------------------------------------------
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
-BAK="$STATE_FILE.bak.$TS"
+BAK="${STATE_FILE}.bak.${TS}.${$}"
 
-cp -f "$STATE_FILE" "$BAK"
+cp -f "$STATE_FILE" "$BAK" || {
+  echo "state_salvage: backup failed (target=$BAK), aborting" >&2
+  exit 2
+}
+# Backup may contain partial event data — keep it user-only readable to
+# match the escalations.log permissions discipline.
+chmod 600 "$BAK" 2>/dev/null || true
 
 # Same filesystem (both under $WS/.cc/) so mv is atomic.
 mv -f "$TMP" "$STATE_FILE"
