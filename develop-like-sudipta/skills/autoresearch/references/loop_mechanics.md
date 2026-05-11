@@ -4,6 +4,74 @@ Concrete how-to for the experiment loop itself. The shared driver is
 `scripts/run_autoresearch.sh`; this doc explains its internals so you can
 debug, extend, or build a custom driver in v4.2.
 
+## The proposer
+
+The autoresearch loop needs an agent to propose the next mutation. There
+are two modes. The dispatcher (`propose_hypothesis.sh`) handles the
+selection; loop drivers and commands don't need to know which mode is
+active — they always call the dispatcher.
+
+### Mode 1 — File-based (default without API key)
+
+- `propose_via_file.sh` writes `.proposed_prompt.txt` and blocks waiting
+  for `.proposed_target.txt`.
+- Cowork (or Claude Code) reads the prompt, generates a proposed mutation,
+  writes the target file (the full new content of the target — no diff,
+  no preamble).
+- The proposer reads it, emits the content on stdout, deletes both
+  scratch files, exits 0.
+- Pattern matches sd-claude-code-access's file-based directive pattern.
+- Best for: interactive use during a Cowork session, when no API key is
+  available, or when you want a human in the loop.
+
+Tunables (env vars):
+
+- `PROPOSER_FILE_TIMEOUT` — seconds to wait for `.proposed_target.txt`.
+  Default 5 (short so unattended `run_autoresearch.sh --once` doesn't
+  hang). Interactive Cowork sessions should set this to several minutes
+  (e.g. `export PROPOSER_FILE_TIMEOUT=600`).
+- `PROPOSER_FILE_POLL_SEC` — poll interval in seconds. Default 5.
+
+### Mode 2 — API-based (default with `ANTHROPIC_API_KEY`)
+
+- `propose_via_api.sh` constructs a prompt (system + user) and curls
+  `https://api.anthropic.com/v1/messages` directly with the
+  `claude-sonnet-4-6` model.
+- Parses `content[0].text` and emits the proposed target content to
+  stdout.
+- Fully autonomous — no human/Cowork in the loop.
+- Best for: overnight runs, CI, multi-skill swarms.
+
+Exit codes (from `propose_via_api.sh`):
+
+- `0` — success.
+- `2` — missing key OR HTTP 401/403 auth failure.
+- `3` — HTTP 429 rate-limit.
+- `4` — HTTP 5xx server error or unreachable.
+- `1` — generic error (bad args, parse failure, etc.).
+
+Tunables (env vars):
+
+- `ANTHROPIC_API_KEY` (required).
+- `ANTHROPIC_MODEL` (default `claude-sonnet-4-6`).
+- `ANTHROPIC_API_URL` (default the production endpoint — override for
+  proxies or local replays).
+- `ANTHROPIC_MAX_TOKENS` (default 4096).
+
+### Selecting the mode
+
+Priority order (first match wins):
+
+1. `<skill>/autoresearch/config.json` → `"proposer_mode": "file" | "api"`.
+2. `PROPOSER_MODE` env var.
+3. Autodetect — `ANTHROPIC_API_KEY` set ⇒ `"api"`, else `"file"`.
+
+Example `config.json`:
+
+```json
+{ "proposer_mode": "file" }
+```
+
 ## Time-boxing an experiment
 
 Each `score.sh` call is wrapped in a timeout. Bash 3.2 (macOS default)
