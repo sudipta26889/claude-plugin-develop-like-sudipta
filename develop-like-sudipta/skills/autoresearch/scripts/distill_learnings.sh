@@ -65,6 +65,13 @@ if not files:
 cat_count = Counter()
 sig_count = defaultdict(Counter)        # category -> Counter(signature) -> n
 sig_projects = defaultdict(lambda: defaultdict(set))  # category -> signature -> {ws_id...}
+# v5.0 — cross-machine dimension. sync_learnings.sh + aggregate_learnings.sh
+# stamp every record with source_host ("local" or a peer hostname). A
+# signature observed on >=2 distinct source_host values in the window is a
+# stronger universal signal than one that appears across many projects on
+# a single machine — different hardware / installs / users converging on
+# the same pattern.
+sig_hosts = defaultdict(lambda: defaultdict(set))  # category -> signature -> {source_host...}
 total = 0
 
 # Choose a "signature" key per category — the field whose distribution is most
@@ -110,6 +117,11 @@ for f in files:
             sig_count[cat][sig] += 1
             ws = rec.get("ws_id", "?")
             sig_projects[cat][sig].add(ws)
+            # v5.0 — track distinct source_hosts for cross-machine detection.
+            # Default to "local" for legacy aggregated records that pre-date
+            # the source_host tag (so old data doesn't get phantom NULL hosts).
+            host = rec.get("source_host", "local")
+            sig_hosts[cat][sig].add(host)
 
 out_path = os.path.join(dist_dir, out_name)
 lines = []
@@ -131,21 +143,37 @@ lines.append("")
 for cat, _n in cat_count.most_common():
     lines.append(f"### {cat}")
     lines.append("")
-    lines.append("| signature | events | distinct projects | cross-project? |")
-    lines.append("|---|---|---|---|")
+    lines.append("| signature | events | distinct projects | distinct hosts | cross-project? | cross-machine? |")
+    lines.append("|---|---|---|---|---|---|")
     for sig, n in sig_count[cat].most_common(8):
         proj_n = len(sig_projects[cat][sig])
-        cross = "**YES**" if proj_n >= 2 else "no"
+        host_n = len(sig_hosts[cat][sig])
+        cross_proj = "**YES**" if proj_n >= 2 else "no"
+        cross_machine = "**YES**" if host_n >= 2 else "no"
         sig_safe = sig.replace("|", "\\|")
-        lines.append(f"| {sig_safe} | {n} | {proj_n} | {cross} |")
+        lines.append(f"| {sig_safe} | {n} | {proj_n} | {host_n} | {cross_proj} | {cross_machine} |")
     lines.append("")
 
 lines.append("## Candidate mutations (priors for autoresearch)")
 lines.append("")
-lines.append("Signatures with `cross-project: YES` are stronger evidence than single-project")
-lines.append("ones — they suggest a systemic gap in the plugin, not an idiosyncrasy.")
-lines.append("Feed the top 3 cross-project signatures per category into")
-lines.append("`propose_via_file.sh` as candidate priors.")
+lines.append("Two strength tiers feed the proposer:")
+lines.append("")
+lines.append("1. **cross-machine: YES** — same signature observed on >=2 distinct")
+lines.append("   `source_host` values in the window. This is the strongest universal")
+lines.append("   signal: different hardware / installs / users converging on the same")
+lines.append("   pattern means the issue is in the plugin, not the environment. Feed")
+lines.append("   the top 3 cross-machine signatures per category to `propose_via_file.sh`")
+lines.append("   FIRST.")
+lines.append("")
+lines.append("2. **cross-project: YES** (but single-machine) — same signature on >=2")
+lines.append("   distinct `ws_id` values within one host. Strong evidence of a systemic")
+lines.append("   gap; weaker than cross-machine because it could still be a")
+lines.append("   per-machine setup quirk. Use these to round out the top-N if no")
+lines.append("   cross-machine signatures exist for a category yet.")
+lines.append("")
+lines.append("Single-project, single-machine signatures are idiosyncrasies — log them")
+lines.append("but don't promote them into priors. The autoresearch loop's quota is")
+lines.append("better spent on signals that travel.")
 lines.append("")
 
 content = "\n".join(lines)
