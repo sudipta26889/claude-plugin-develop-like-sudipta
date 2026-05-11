@@ -21,7 +21,7 @@ Run this once per machine after pulling/updating the `develop-like-sudipta` plug
 
 2. Calls `mcp__scheduled-tasks__list_scheduled_tasks` to inspect Cowork's current task registry.
 
-3. For each of the five required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`, `cc-orchestrator`, `cc-coordinator-keepalive`):
+3. For each of the six required tasks (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`, `cc-orchestrator`, `cc-coordinator-keepalive`, `ccbridge-sync-learnings`):
    - If NOT present → call `mcp__scheduled-tasks__create_scheduled_task` to register it with the recommended cron.
    - If present → call `mcp__scheduled-tasks__update_scheduled_task` to refresh the prompt from the latest SKILL.md (so plugin updates flow into Cowork without manual edits).
 
@@ -52,6 +52,7 @@ Call `mcp__scheduled-tasks__list_scheduled_tasks`. Look for entries with `taskId
 - `ccbridge-propose-fix-pr`
 - `cc-orchestrator`
 - `cc-coordinator-keepalive`
+- `ccbridge-sync-learnings`
 
 ### Step 3 — Read the bundled SKILL.md as the source of truth
 
@@ -89,6 +90,11 @@ For each required task, read the SKILL.md from `~/Documents/Claude/Scheduled/<ta
 - Recommended cron: `*/5 * * * *` (every five minutes — watchdog over the orchestrator). Detects stalls (orchestrator heartbeat > 7 min stale), escalates via Slack/email if `<ws>/.cc/active-job.json` has `notify_*` channels set, and self-disables both this task AND `cc-orchestrator` via `mcp__scheduled-tasks__update_scheduled_task enabled=false` once every active job has reached its `done_criteria`. Like `cc-orchestrator`, Step 1 early-exits on idle machines.
 - Otherwise identical pattern to above.
 
+**For `ccbridge-sync-learnings`:**
+
+- Recommended cron: `0 */6 * * *` (every six hours). Pulls peer Macs' learning tails (`~/.cache/ccbridge/learnings/*.jsonl`) into the local `learnings/remote-<host>/` namespace so the aggregator + distiller see cross-MACHINE signal. Step 1 early-exits when `~/.cache/ccbridge/peers.json` is absent or empty — the user opted out of multi-machine sync. SSH setup (one-time `ssh-copy-id <peer>`) and `peers.json` schema documented in `references/multi_machine.md`.
+- Otherwise identical pattern to above.
+
 ### Step 5 — Report
 
 Print a compact summary:
@@ -102,6 +108,7 @@ Print a compact summary:
   - ccbridge-propose-fix-pr      — registered (next run: 2026-MM-DD HH:MM)
   - cc-orchestrator              — registered (next run: 2026-MM-DD HH:MM, every minute)
   - cc-coordinator-keepalive     — registered (next run: 2026-MM-DD HH:MM, every 5 minutes)
+  - ccbridge-sync-learnings      — registered (next run: 2026-MM-DD HH:MM, every 6 hours)
 [ccbridge-init] done. The closed loop is now live on this machine.
 ```
 
