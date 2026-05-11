@@ -1,0 +1,14 @@
+{
+  "job_id": "v5.0-close-skill-gaps-2026-05-12",
+  "started_at": "2026-05-12T20:00:00Z",
+  "plan_path": "docs/plans/2026-05-12-v48-to-v50.md",
+  "max_duration_hours": 24,
+  "max_cycles": 1440,
+  "notify_user_email": "",
+  "notify_slack_channel": "",
+  "done_criteria": {
+    "phase_complete_min": 7,
+    "browser_test_required": true,
+    "evidence_dir": "docs/e2e-testing"
+  }
+}
