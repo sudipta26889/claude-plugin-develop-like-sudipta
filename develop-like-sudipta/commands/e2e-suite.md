@@ -43,6 +43,7 @@ Generate the project-wide end-to-end test suite by stitching every per-phase tes
    - Path to `E2E-SUITE.md`
    - Path to `e2e.spec.ts`
    - One-line command to run the suite: `npx playwright test --config=docs/e2e-testing/specs/playwright.config.ts e2e.spec.ts`
+8. **Emit CI workflow** — invoke `scripts/emit_ci_workflow.sh <workspace>`. Writes `.github/workflows/e2e.yml` adapted to the project's package manager (npm/pnpm/yarn), detected Node version (`engines.node` or default 20), dev-server URL (env `DEV_SERVER_URL` > `.cc/config.json` > `http://localhost:5173`), and Playwright config path. Idempotent — the file's first line is `# source-hash: <hash>`; a re-run with the same inputs prints `unchanged` and leaves the file untouched. Safe to re-run after every `/e2e-suite`.
 
 ## Don't
 
@@ -50,3 +51,4 @@ Generate the project-wide end-to-end test suite by stitching every per-phase tes
 - Don't include phases marked `pass-with-warnings` as green without flagging them.
 - Don't overwrite per-phase mds. This command only writes the umbrella files.
 - Don't generate snapshot tests. The umbrella stays simple — just imports + a coverage doc.
+- Don't commit a hand-edited `e2e.yml` that doesn't match the source-hash — it will be regenerated next `/e2e-suite` run.
