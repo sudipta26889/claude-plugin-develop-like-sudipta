@@ -300,6 +300,20 @@ CC's checkpoint summaries describe intent; a passing test suite describes correc
 
 Detailed protocol: [`references/browser_testing.md`](references/browser_testing.md). Playwright emission patterns: [`references/playwright_generation.md`](references/playwright_generation.md). API-level analogue: [`references/api_testing.md`](references/api_testing.md).
 
+## Chrome MCP coexistence (v4.6 D3)
+
+If Cowork is driving Chrome via mcp__Claude_in_Chrome__* (the standard browser-test path),
+spawning CC with --chrome creates a second client to the same browser session. They don't
+fight, but only one should drive at a time.
+
+Recommendation: Cowork-Chrome owns the browser for browser-tests. Spawn CC WITHOUT --chrome
+when Cowork-Chrome is connected. Override:
+
+  CC_LAUNCH_FLAGS="--continue" bash ~/.cache/ccbridge/launch_cc.sh <workspace>
+
+The launch_cc.sh default stays --continue --chrome (right for CLI-only sessions where Cowork
+isn't driving the browser).
+
 ## Reading the codebase like a real manager
 
 Cowork's understanding of the project is fragile across long autonomous runs because CC writes the code, not Cowork. Combat drift by:
