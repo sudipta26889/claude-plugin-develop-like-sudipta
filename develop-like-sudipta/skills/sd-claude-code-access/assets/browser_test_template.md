@@ -60,6 +60,26 @@ phase-<N>-<feature-slug>
 
 No 4xx/5xx allowed on any listed endpoint. Unlisted endpoints are ignored.
 
+## Accessibility assertions
+Use `axe-playwright` to scan for WCAG violations. Configure via:
+- `axe_enabled: true` in `.cc/config.json` (default false — opt-in to avoid breaking projects without axe-playwright installed)
+- `axe_severity_max: "serious"` — fail on violations at this severity or worse. Allowed: `minor | moderate | serious | critical`. Default `serious`.
+
+For each step that asserts a meaningful UI state (after a click, after a page load), run `axe.analyze()`. Record findings as:
+
+| Step | Rule ID | Severity | Element | Description |
+|---|---|---|---|---|
+| s2 | color-contrast | serious | `.submit-btn` | text contrast 3.5:1 below 4.5:1 |
+
+Empty table = green a11y. Pass-with-warnings = violations exist below `axe_severity_max`.
+
+Manual checks (always do, regardless of axe):
+- Tab order matches visual order (run a `Tab`-spam sequence, observe focus ring)
+- All interactive elements reachable by keyboard (no `tabindex=-1` on real buttons)
+- Form fields have associated labels (matching `for=` attribute or wrapping `<label>`)
+- `<img>` has alt text (or `alt=""` for decorative)
+- `aria-label` on icon-only buttons
+
 ## Result
 - **Status:** `<pass | fail | pass-with-warnings>`
 - **Timestamp:** `YYYY-MM-DD HH:MM:SS TZ`

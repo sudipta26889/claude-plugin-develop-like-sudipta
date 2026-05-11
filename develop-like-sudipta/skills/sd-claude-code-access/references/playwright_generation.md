@@ -62,6 +62,23 @@ Always prefer in this order:
 
 If the markdown's step references an element by visible text, emit `getByText` or `getByRole`. If the project already uses `data-testid` widely (check existing components), prefer that and recommend CC add testids as part of the directive for that phase.
 
+## A11y assertions (opt-in)
+
+When `.cc/config.json` → `axe_enabled: true`, the spec generator wraps key test.step blocks with `axe-playwright`'s `checkA11y` call. Findings appear in Playwright's HTML report as part of the failure trace.
+
+Setup requirement: project must install `axe-playwright`:
+```bash
+npm install -D axe-playwright
+```
+
+Config keys:
+- `axe_enabled: true` (default false)
+- `axe_severity_max: "serious"` (default "serious"; allowed: minor / moderate / serious / critical)
+
+The template (`assets/playwright_spec_template.ts`) includes `// A11Y BEGIN ... // A11Y END` markers around the axe blocks; the generator strips them when `axe_enabled` is false.
+
+Manual a11y checks (tab order, label association, alt text, aria-labels on icon buttons) are documented in `assets/browser_test_template.md` and should be done regardless of axe.
+
 ## Idempotent overwrite
 
 A spec file is regenerated only if the source markdown's `## Steps` content hash changed.
@@ -105,30 +122,25 @@ Every per-phase spec imports from `./fixtures` instead of `@playwright/test` dir
 
 ## Playwright config (scaffold once)
 
-If `specs/playwright.config.ts` doesn't exist, emit:
+If `specs/playwright.config.ts` doesn't exist, copy `assets/playwright.config.template.ts` to the project's specs dir.
 
-```typescript
-import { defineConfig, devices } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+The template reads `<workspace>/.cc/config.json` → `browsers` (array) and emits one Playwright `project` per entry. Allowed values:
 
-const DEV_SERVER_URL = process.env.DEV_SERVER_URL || 'http://localhost:5173';
+| Config value | Maps to | Use case |
+|---|---|---|
+| `chromium` | Desktop Chrome | default, fast |
+| `firefox` | Desktop Firefox | desktop coverage |
+| `webkit` | Desktop Safari | desktop coverage |
+| `mobile-chrome` | Pixel 5 | mobile coverage |
+| `mobile-safari` | iPhone 13 | mobile coverage |
 
-export default defineConfig({
-  testDir: '.',
-  fullyParallel: false,
-  retries: process.env.CI ? 2 : 0,
-  reporter: [['html', { outputFolder: '../playwright-report' }], ['list']],
-  use: {
-    baseURL: DEV_SERVER_URL,
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-  },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  ],
-});
+Default `browsers: ["chromium"]` — single project, fast feedback. Add others only when the project's testing strategy demands them; cross-browser runs scale linearly with project count.
+
+Example config snippet:
+```json
+{
+  "browsers": ["chromium", "firefox", "mobile-safari"]
+}
 ```
 
 Adjust port / browser projects based on the project's existing tooling.
