@@ -1,0 +1,10 @@
+{
+  "_comment": "Drop a copy of this at <workspace>/.cc/config.json fields (flake_retries + flake_whitelist) to control flake handling. The skill reads these per project.",
+  "flake_retries": 2,
+  "_comment_flake_retries": "Number of times to re-run JUST the failing tests before declaring red. Default 2. Set to 0 to disable retry.",
+  "flake_whitelist": [
+    "tests/integration/test_websocket_race.py::test_reconnect_storm",
+    "tests/e2e/checkout.spec.ts::handles intermittent CDN 503"
+  ],
+  "_comment_flake_whitelist": "Fully qualified test names that should fail-soft (log + continue) rather than trigger bug-driven TDD. Match the format your runner emits."
+}

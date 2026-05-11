@@ -6,6 +6,8 @@
 
 When ANY test goes red — unit, integration, or browser — the bug-found protocol is the only path forward. Skip a step and the fix is at best lucky, at worst it papers over the real defect.
 
+> **Before invoking bug-found protocol:** verify_gate's flake-retry layer (see `references/verify_gate.md`) re-runs the failing test up to `flake_retries` times. If it recovers, it's a flake — no bug. If it's in `flake_whitelist`, the failure is logged but doesn't trigger the bug-found protocol. Only persistently-red tests not on the whitelist arrive here.
+
 ## The sequence (memorize this)
 
 ```

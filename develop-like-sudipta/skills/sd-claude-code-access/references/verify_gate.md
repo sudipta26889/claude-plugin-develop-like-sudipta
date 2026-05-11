@@ -94,6 +94,59 @@ If the test command produces a coverage report (pytest-cov, Jest --coverage, vit
 2. Compare against `coverage_min`.
 3. Below threshold → fail the gate with reason `coverage <NN%> below min <coverage_min>%`. This counts as a red verify and triggers the bug-found protocol (write a test that covers the missing path).
 
+## Flake retry + whitelist
+
+Not every red is a bug. Some tests are legitimately flaky — network-dependent integration tests, time-sensitive race conditions, third-party API smoke tests that occasionally throttle. Running bug-driven TDD on a flake is wasted effort; the "fix" is to wait for the next run.
+
+The verify gate handles this in two layers:
+
+### Layer 1 — Retry the failing test(s)
+
+When the test command exits non-zero, Cowork re-runs the SPECIFIC failing tests (not the whole suite) up to `flake_retries` times before declaring a real failure. Per-runner re-run patterns:
+
+| Runner | Re-run command |
+|---|---|
+| pytest | `pytest --last-failed -x` (uses .pytest_cache) |
+| jest | `npx jest --onlyFailures` (Jest 28+) or `jest -t "<exact name>"` |
+| vitest | `npx vitest --bail=1 <failing-file>` |
+| cargo | `cargo test --test <test-name>` |
+| go | `go test -run "^TestName$" ./<pkg>` |
+
+Default `flake_retries`: 2 (so each failing test runs up to 3 times total). Configure via `<workspace>/.cc/config.json` → `flake_retries: N`.
+
+Retry decision tree:
+```
+test fails → retry 1 → pass? → green (log "flake recovered")
+                    → fail? → retry 2 → pass? → green (log "flake recovered after 2")
+                                      → fail? → check whitelist
+```
+
+### Layer 2 — Whitelist persistent-but-known flakes
+
+If a test is in `flake_whitelist`, Cowork logs the failure and CONTINUES — doesn't trigger bug-found protocol. The verify-gate's overall verdict downgrades from "red" to "yellow" (advisory). Pass/fail-with-flakes is reported in the run summary; phase still advances.
+
+Config:
+```json
+{
+  "flake_retries": 2,
+  "flake_whitelist": [
+    "tests/integration/test_websocket_race.py::test_reconnect_storm",
+    "tests/e2e/checkout.spec.ts::handles intermittent CDN 503"
+  ]
+}
+```
+
+Whitelist entries are matched literally (fully qualified test name). Use the same format the runner emits (`test_output_parsing.md`'s schema's `test` field).
+
+### When NOT to whitelist
+- A test that fails > 50% of the time is BROKEN, not flaky. Fix or delete it.
+- A test that started failing after a known regression — that's a bug, not a flake.
+- A test that's slow but always passes — that's not a flake either (different problem; see test_timeout).
+
+Quarterly: review the whitelist. Remove entries that have been stable for 3 months.
+
+See also: `references/bug_driven_tdd.md` for what happens AFTER retry+whitelist let a real failure through.
+
 ## Don't
 
 - **Don't skip the gate** to "save time." A red unit test + green browser test means the browser test is wrong or the unit test is testing the wrong contract — either way, the phase isn't done.
