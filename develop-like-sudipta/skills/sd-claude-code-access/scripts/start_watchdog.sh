@@ -123,12 +123,17 @@ if pgrep -f "$DEST/watchdog.sh" >/dev/null; then
   exit 0
 fi
 
-# Pass WORKSPACE + dryrun toggle + escalation hook through to background
-# process. Explicit forwarding (rather than relying on inherited env) makes
-# the dryrun example in danger_pattern_governance.md and the
-# ESCALATE_CMD example in failure_modes.md unambiguous.
+# Pass WORKSPACE + dryrun toggle + escalation hook + auto-approve toggle
+# through to background process. Explicit forwarding (rather than relying
+# on inherited env) makes the dryrun example in danger_pattern_governance.md,
+# the ESCALATE_CMD example in failure_modes.md, and the safety-net-vs-
+# autonomous distinction in active_watcher.md unambiguous.
+#
+# v4.9 — WATCHDOG_AUTO_APPROVE default is "0" (safety-net only). Override
+# to "1" for unattended scheduled-task runs where no manager is online.
 WORKSPACE="$WORKSPACE" CCBRIDGE_DIR="$DEST" \
   WATCHDOG_DRYRUN="${WATCHDOG_DRYRUN:-}" \
+  WATCHDOG_AUTO_APPROVE="${WATCHDOG_AUTO_APPROVE:-0}" \
   ESCALATE_CMD="${ESCALATE_CMD:-}" \
   nohup "$DEST/watchdog.sh" >/dev/null 2>&1 &
 disown
