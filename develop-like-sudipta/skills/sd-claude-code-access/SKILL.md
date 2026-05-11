@@ -127,6 +127,13 @@ This skill captures methodology developed specifically for the Cowork↔CC bridg
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Active-watcher pointer
+
+Every prompt in the per-phase loop now goes through the **manager-decides** model:
+the watchdog detects + refuses-on-danger, and the manager (Cowork or human) reads
+`prompt_pending` events from `state.json` and acts deliberately. Manager-decides
+model documented in [`references/active_watcher.md`](references/active_watcher.md).
+
 ## Modes
 
 The skill supports three operating modes. Pick the one that matches your use case; each
@@ -274,7 +281,9 @@ Only after Step 0 is complete and the chosen path is verified should you proceed
      ```
    - **Path B / C:** display the command, ask user to run it.
 
-   The lock prevents two Cowork sessions driving the same CC simultaneously. The watchdog auto-approves prompts except those matching `danger_patterns.txt`.
+   The lock prevents two Cowork sessions driving the same CC simultaneously.
+
+   The watchdog runs in **safety-net-only mode** by default (v4.9+). It detects prompts and refuses danger patterns; the **manager** (Cowork or human) decides the rest by reading `prompt_pending` events from `state.json` and acting via `keys.sh` / `send.sh`. Set `WATCHDOG_AUTO_APPROVE=1` only for unattended autonomous runs (scheduled tasks, batch jobs) where no manager is online. Manager-decides model is documented in [`references/active_watcher.md`](references/active_watcher.md).
 
 6. **(Optional) Start hang detector in background:**
    ```bash
@@ -439,7 +448,7 @@ Full playbook: [`references/managing_long_runs.md`](references/managing_long_run
 | `read.sh` | Visible terminal buffer. Respects `$TERMINAL_APP`. |
 | `read_history.sh` | Full scrollback (Terminal.app); falls back to `contents` on iTerm2. |
 | `keys.sh` | Single-key sender: `return`, `esc`, `up`, `down`, `tab`, or any printable char. Respects `$TERMINAL_APP`. |
-| `watchdog.sh` | Background loop. Auto-presses Enter on permission prompts UNLESS the buffer matches a `danger_patterns.txt` regex (then logs LOUD and refuses). Logs state events. |
+| `watchdog.sh` | Detects permission prompts and logs them as `prompt_pending` (manager decides). Refuses prompts matching `danger_patterns.txt` (logs LOUD, fires `escalate.sh`). With `WATCHDOG_AUTO_APPROVE=1` (legacy / unattended runs), auto-presses Enter on non-danger prompts. Default (v4.9+) is safety-net-only — the manager is the decision-maker. See `references/active_watcher.md`. |
 | `start_watchdog.sh` | Acquires driver lock if `WORKSPACE` set, then nohup-launches the watchdog. |
 | `stop_watchdog.sh` | Kills watchdog. Releases lock. Logs `watchdog_stopped`. |
 | `nudge_if_stuck.sh` | Hang detection with 3-confirmation gate. Esc-interrupts only on confirmed hang. Logs `nudge_sent`. |
@@ -472,6 +481,7 @@ Full playbook: [`references/managing_long_runs.md`](references/managing_long_run
 | `references/verify_gate.md` | Auto-detection for static checks + project test runners (pytest/jest/vitest/cargo/go/maven), `.cc/config.json` schema, fail-fast semantics. |
 | `references/bug_driven_tdd.md` | The red-test-first protocol. Worked examples for unit-only, browser-only, and both-layer bugs. Anti-patterns. Audit checklist for "did they write the failing test first?" |
 | `references/danger_pattern_governance.md` | Adding/auditing a danger pattern, debugging a false positive, or wiring `WATCHDOG_DRYRUN`. |
+| `references/active_watcher.md` | The manager-decides model (v4.9+). Why the shift from auto-approve to safety-net-only, manager polling cadence, per-prompt decision tree, when to set `WATCHDOG_AUTO_APPROVE=1`. |
 | `references/audit_timing.md` | Tuning `--retry`/`--retry-interval` for commit-hook lag, or diagnosing an audit that surfaces drift on healthy phases. |
 
 ## Quick reference card
