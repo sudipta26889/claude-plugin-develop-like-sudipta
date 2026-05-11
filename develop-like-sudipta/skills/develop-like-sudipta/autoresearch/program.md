@@ -39,6 +39,20 @@ This 0–1 F1 scale matches the other v4.1+ wired skills (sd-claude-code-access,
 5. Mention superpowers integration triggers explicitly (brainstorming, TDD, code-review,
    subagent-driven-development, git-worktrees) since users often phrase requests that way.
 
+## Scoring modes
+
+This skill ships two scorers:
+
+1. **score.sh (default — word-overlap)**: deterministic 60%-overlap match between query and description. Fast, free, lexical.
+2. **score-llm.sh (opt-in — Claude Haiku judgment)**: asks Claude Haiku 4.5 whether each query would invoke this skill. Slower (~100ms/query), costs API credits (~$0.01/100 queries), semantic.
+
+Select via `autoresearch/config.json`:
+```json
+{ "scorer_mode": "llm" }
+```
+
+Default is `"wordlap"`. Use LLM for the final hill-climb after lexical optimization plateaus. Requires `ANTHROPIC_API_KEY`. See `skills/autoresearch/references/llm_scoring.md` for cost, caching, and failure-mode details.
+
 ## Out of scope
 - Don't change SKILL.md body (only the description field in YAML frontmatter is editable)
 - Don't change `references/`
