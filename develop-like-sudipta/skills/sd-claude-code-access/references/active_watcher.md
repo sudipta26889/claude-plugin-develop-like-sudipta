@@ -226,3 +226,93 @@ noise.
 - **Multiple active jobs are linear in cost.** If you have three workspaces
   with active jobs, each fire consumes ~3× the per-job reasoning budget. Cap
   the total active jobs to what your subscription can afford to keep healthy.
+
+## Stop conditions
+
+The two scheduled tasks split responsibility: `cc-orchestrator` writes the
+stop signal into `job-status.json`; `cc-coordinator-keepalive` reads it and
+fires the self-disable when every active job has stopped. The table below maps
+each condition to the task that checks it and the `done_reason` field value
+the orchestrator writes.
+
+| Condition | Checked by | `done_reason` written |
+|---|---|---|
+| `<ws>/.cc/monitor.stop` exists | `cc-orchestrator` Step 1 (before any work) | `user_stop` |
+| `cycles >= max_cycles` | `cc-orchestrator` Stop-conditions §2 | `max_cycles` |
+| `now - started_at > max_duration_hours * 3600` | `cc-orchestrator` Stop-conditions §3 | `max_duration` |
+| 3 consecutive failed fix attempts in same category | `cc-orchestrator` Stop-conditions §4 (sets `blocked_on` + cooldown; not a terminal stop) | n/a — `blocked_on=<category>` |
+| `cycle_timeout_s` exceeded mid-fire | `cc-orchestrator` Per-fire wall-clock cap | n/a — `cycle_timeout` state event, no stop |
+| `done_criteria` met (phase + evidence + commit pattern) | `cc-orchestrator` Step 3 | `done=true` (terminal) |
+| Heartbeat > 7 min stale | `cc-coordinator-keepalive` Step 2 | n/a — `keepalive_stall` event + escalation; not a stop |
+| All active jobs `done=true` | `cc-coordinator-keepalive` Step 3 self-disable | both scheduled tasks → `enabled=false` |
+
+Two of the conditions are **pauses**, not stops: §4 (cooldown after repeated
+fix failures) writes `blocked_on` + `cooldown_until` and resumes when the
+cooldown window expires; the keepalive stall writes an escalation file but
+leaves both tasks enabled (humans investigate). Only `done=true` triggers
+self-disable, and only after every active job across every workspace has
+stopped.
+
+## Escalation channels
+
+The keepalive task fires two best-effort channels when a stall or
+`job_complete` event needs to reach a human. Both are opt-in per-workspace via
+`<workspace>/.cc/active-job.json`:
+
+```json
+{
+  "notify_slack_channel": "#dev-cc-bot",
+  "notify_user_email": "you@example.com"
+}
+```
+
+### Slack (`mcp__02da*__send_message`)
+
+Requires the Slack MCP server to be connected on the user's Cowork session
+(MCP ID prefix `02da*`). When `notify_slack_channel` is set AND the MCP is
+connected, the keepalive task posts the stall/complete summary to that
+channel. Empty string or absent key → channel disabled, no post attempted.
+
+If the MCP isn't connected, the keepalive logs `slack_mcp_unavailable` and
+continues (no abort) — the escalation file at
+`<ws>/.cc/escalations/keepalive-<ts>.md` is always written regardless of
+whether any push channel fired.
+
+### Email (`mcp__da8a*__send_email`)
+
+Requires the email MCP (ID prefix `da8a*`). When `notify_user_email` is set
+AND the MCP is connected, the keepalive sends a message with subject:
+
+- Stall: `[cc-orchestrator stall] <job_id>`
+- Done: `[cc-orchestrator complete] <job_id>`
+
+Body identical to the Slack version (see below). Same MCP-missing semantics:
+log `email_mcp_unavailable`, continue.
+
+### What gets sent
+
+Both channels receive the same scannable summary:
+
+```
+job_id: <id>
+workspace: <abs-path>
+last heartbeat: <ts> <verdict>   (<N> minutes stale)
+state.json tail (last 10 lines):
+  <...>
+escalation file: <ws>/.cc/escalations/keepalive-<ts>.md
+```
+
+The intent is "5-second triage": the user should be able to skim the body and
+decide ignore-vs-investigate without opening the workspace. For `job_complete`
+events the heartbeat block is replaced by `phase: <N>` and `evidence: <paths>`
+so the user can verify the run's terminal state at a glance.
+
+### When NOT to wire push channels
+
+- **Solo dev on the same machine the orchestrator runs on.** You'll see the
+  escalation file the next time you switch to the workspace; the push is
+  noise.
+- **No external escalation needed.** Set both `notify_*` fields to `""` or
+  omit them; the escalation file is still written and serves as the audit
+  trail. The keepalive task does NOT degrade silently — every escalation
+  attempt logs its channel-availability state.
