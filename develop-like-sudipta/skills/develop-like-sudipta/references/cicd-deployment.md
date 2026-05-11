@@ -340,6 +340,7 @@ version: "3.8"
 services:
   app:
     image: ghcr.io/<org>/<project>/backend:latest
+    pull_policy: always  # MANDATORY — see "Deployment Recovery Policy" below
     ports:
       - "8000:8000"
     environment:
@@ -356,6 +357,7 @@ services:
 
   frontend:
     image: ghcr.io/<org>/<project>/frontend:latest
+    pull_policy: always  # MANDATORY — see "Deployment Recovery Policy" below
     ports:
       - "80:80"
     networks:
@@ -382,7 +384,56 @@ networks:
 ### Local vs Production Summary
 
 Local: `build:` from source, hot-reload volumes, `.env` file, DEBUG, dev ports.
-Production: `image:` from GHCR, persistent data only, Portainer env, INFO, `external: true` network, resource limits.
+Production: `image:` from GHCR, persistent data only, Portainer env, INFO, `external: true` network, resource limits, **`pull_policy: always`**.
+
+## Deployment Recovery Policy (MANDATORY)
+
+**All deploys flow through Portainer. Never `docker pull ghcr.io/...` manually on the host.**
+
+### Why
+
+Manual `gh auth token | ssh <host> 'docker login ghcr.io -u <user> --password-stdin' && ssh <host> 'docker pull <image>:latest'` solves "stale image after redeploy webhook" mechanically — but it's an **anti-pattern** for three reasons:
+
+1. **Security.** Persists a long-lived GHCR token in `~/.docker/config.json` on the host. The credential lives outside Portainer's secret management, doesn't rotate with stack updates, and survives container redeploys.
+2. **Auditability.** Bypasses Portainer's stack-state log. The "deploy" doesn't appear in Stacks history — only the underlying container restart does, with no association to a tag/digest change.
+3. **Consistency.** Creates a second deploy path that can diverge from the canonical one. Future Portainer redeploys may overwrite the manually-pulled state with whatever the stack's image reference resolves to at that moment.
+
+### The canonical Portainer-native recovery routes
+
+When a redeploy webhook restarted containers but didn't pull (`StartedAt` advanced, image SHA unchanged), use one of these — in order of speed:
+
+```bash
+# 1. Portainer UI (fastest, always works on CE + BE)
+#    Stacks → <stack_name> → Editor → check "Re-pull image and redeploy" → Update
+#    ~10 seconds. Fully audited inside Portainer.
+
+# 2. Stack webhook with pullImage=true (Portainer BE supports this)
+curl -sS -X POST "$PORTAINER_WEBHOOK_URL?pullImage=true"
+
+# 3. Re-fire the CI/CD redeploy job (when Portainer's webhook is misconfigured)
+gh api -X POST /repos/<owner>/<repo>/actions/jobs/<redeploy_job_id>/rerun
+```
+
+### Permanent fix
+
+Add `pull_policy: always` to every service in `portainer/stack-*.yml` (shown in the example above). Compose's `up -d` then re-pulls the `:latest` tag on every redeploy, regardless of whether the webhook explicitly requested it. **This is the cleanest cross-edition (CE+BE) solution** — it doesn't depend on which Portainer features your edition has.
+
+Alternative for Portainer BE users: configure each stack's webhook to "Pull image on webhook trigger" in the UI. Removes the need for `pull_policy: always` but requires Portainer BE.
+
+### Acceptable use of `gh auth | ssh docker login` (DIAGNOSTIC ONLY)
+
+You may use the manual-pull path **once** to confirm reachability when debugging — e.g. "is the new image even visible from this host?" — but always:
+
+1. Run `docker logout ghcr.io` immediately after. Never leave credentials behind.
+2. Recover the actual deploy via one of the three Portainer-native routes above.
+3. File a follow-up issue to add `pull_policy: always` to the stack file so this trap doesn't recur.
+
+### Anti-patterns
+
+- ❌ `gh auth token | ssh <host> 'docker login ghcr.io -u <user> --password-stdin'` as a routine deploy step.
+- ❌ Wiring a "manual pull" step into `redeploy.yml` GitHub Action.
+- ❌ Leaving `~/.docker/config.json` with GHCR creds on production hosts.
+- ❌ Pulling manually then restarting the container via `docker run` (bypasses stack mgmt entirely; next Portainer redeploy will overwrite).
 
 ## Environment Variable Propagation
 

@@ -11,5 +11,7 @@ Follow Pillar 11 (CI/CD). Load `references/cicd-deployment.md` for full pipeline
 3. Docker build with multi-stage, non-root USER
 4. Push to GHCR with `latest` + SHA tags
 5. Trivy scan for vulnerabilities
-6. Deploy to Portainer stack
-7. Verify health checks pass post-deploy
+6. Deploy to Portainer stack (Portainer-native only — UI / webhook with `pullImage=true` / `gh run rerun`). **Never** manual `docker pull` + `docker login ghcr.io` on the host.
+7. Verify health checks pass post-deploy (image SHA matches expected revision, not just `StartedAt` advanced)
+
+See `references/cicd-deployment.md` → "Deployment Recovery Policy (MANDATORY)" for the full policy + recovery routes + `pull_policy: always` permanent fix.
