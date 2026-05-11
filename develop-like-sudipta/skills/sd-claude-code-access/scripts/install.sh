@@ -17,6 +17,8 @@ SCRIPTS=(
   register_project.sh learning.sh
   # v4.4 — auto-launch CC if not already running for the workspace
   launch_cc.sh
+  # v4.5 — at-a-glance health-check (also callable standalone)
+  ccbridge_status.sh
 )
 
 # v4.3 — bootstrap ccbridge data subdirs so learning.sh + register_project.sh
