@@ -51,9 +51,9 @@ This skill captures methodology developed specifically for the Cowork↔CC bridg
 │ 2. Log: state.sh phase_start phase=N                                   │
 │ 3. Send tiny trigger: "Read `.cc/phase-<N>.md` and proceed."           │
 │ 4. Poll terminal every 2-5 minutes (or use a long-poll subagent).      │
-│ 5. At checkpoint: audit.sh + read git diff → review → run the          │
-│    VERIFY GATE (static + unit + integration) → BROWSER-TEST STEP →     │
-│    log state.sh phase_complete only when ALL green.                    │
+│ 5. At checkpoint: audit.sh --retry 3 --retry-interval 2 + read git     │
+│    diff → review → run the VERIFY GATE (static + unit + integration)   │
+│    → BROWSER-TEST STEP → log state.sh phase_complete only when green.  │
 │ 6. If hung >10 min: nudge_if_stuck.sh handles it with 3-confirm gate.  │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
