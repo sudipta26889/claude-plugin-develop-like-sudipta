@@ -4,11 +4,12 @@ This is the first thing to understand before anything else in this skill. The bu
 
 This document defines the **substrate detection ladder** Cowork must walk through at the start of every session, and the consequences of each path.
 
-## The three execution paths
+## The four execution paths
 
 | Path | Mechanism | Speed | Typing restriction | When available |
 |---|---|---|---|---|
 | **A. Desktop_Commander MCP** | `mcp__Desktop_Commander__*` runs commands directly on the user's Mac via SSH-like daemon | fast | none (it's full shell) | Cowork desktop app on macOS, DC connector installed |
+| **D. SSH / remote-Mac** | Desktop_Commander on LOCAL Mac runs `ssh "$SSH_TARGET" '...'` against a REMOTE Mac where CC actually runs | medium (+100-500ms SSH per call) | none (full shell on remote) | Path A is available locally AND `SSH_TARGET` env points at a reachable remote Mac with `osascript` + `claude` |
 | **B. computer-use MCP** | `mcp__computer-use__*` controls the Mac via screenshots + clicks | slow | **Terminal/iTerm are tier-click — typing IS blocked at MCP level**; must shell out to osascript to actually type | Cowork desktop app on macOS, computer-use granted |
 | **C. Manual / user-driven** | Tell the user to run install + start-watchdog commands themselves | n/a | none | always — last-resort fallback |
 
@@ -29,11 +30,35 @@ If any of these fail → tell the user this skill is macOS-only and stop.
 
 Without making tool calls (just by introspecting the prompt context), check which MCPs are present:
 
-- **Desktop_Commander present?** → look for `mcp__Desktop_Commander__*` tool names in the tool list. If yes → **Path A** is preferred.
+- **Desktop_Commander present?** → look for `mcp__Desktop_Commander__*` tool names in the tool list. If yes → **Path A** is preferred (or **Path D** if `SSH_TARGET` is also set — see Step 1b).
 - **computer-use present?** → look for `mcp__computer-use__*` tool names. If yes → **Path B** is a fallback.
 - **Neither present?** → only **Path C** (manual) is possible.
 
 If both are present, **prefer Path A**. Desktop_Commander is API-driven, no GUI focus, no screenshot latency.
+
+### Step 1b — Path D probe (only when SSH_TARGET is set)
+
+If `SSH_TARGET` is exported in the environment AND Path A is available (we need Desktop_Commander on the LOCAL Mac to invoke ssh), run the Path D probe:
+
+```
+mcp__Desktop_Commander__start_process(
+  command="bash ~/.claude/plugins/.../skills/sd-claude-code-access/scripts/ssh_probe.sh \"$SSH_TARGET\""
+)
+```
+
+`ssh_probe.sh` exit codes:
+
+| Exit | Meaning | Action |
+|---|---|---|
+| 0 | `READY <macos-version> <claude-version>` | Path D is viable — record `state.sh substrate_chosen path=D` |
+| 1 | `no-ssh-target` | SSH_TARGET unset → fall back to Path A |
+| 2 | `ssh-failed` | connectivity / auth issue → tell user, fall back to Path A |
+| 3 | `no-osascript-on-remote` | remote isn't macOS → Path D not possible, fall back to Path A |
+| 4 | `no-claude-cli-on-remote` | remote needs `claude` install first → surface the install hint to user, fall back to Path A |
+
+**Surface the probe result to the user before driving anything.** A `READY` line is the only honest "go" signal for Path D.
+
+When Path D is chosen, every Desktop_Commander invocation that would normally run a command on the LOCAL Mac is wrapped with `ssh "$SSH_TARGET" '...'` to execute on the REMOTE Mac instead. Bridge scripts (`send.sh`, `watchdog.sh`, etc.) must be installed on the **remote** — run `ssh "$SSH_TARGET" 'bash -s' < scripts/install.sh` once (or copy the scripts via `scp -r` and run `install.sh` over ssh). Subsequent drive operations target the remote's Terminal.app.
 
 ### Step 2 — Confirm CC is actually running
 
@@ -110,17 +135,17 @@ Or, for Path C, ask user to run diagnose.sh and paste output.
 
 ## Per-action mapping (during a run)
 
-| Action | Path A | Path B | Path C |
-|---|---|---|---|
-| Write directive | Use `Write` tool on the mounted workspace dir (works regardless of path) | same | same |
-| Send trigger to CC | `Desktop_Commander__start_process` → `echo '...' \| ~/.cache/ccbridge/send.sh` | screenshot Terminal, ask user to run `echo` cmd | display cmd, user runs it |
-| Read terminal | DC → `~/.cache/ccbridge/read.sh` | `computer-use__screenshot` + visual inspection | ask user to paste recent output |
-| Approve a prompt | watchdog handles automatically (if started) | watchdog (if started) | user approves manually |
-| Interrupt hung CC | DC → `keys.sh esc` | `computer-use__key` (tier-click — `key` may be allowed; verify with `request_access`) | tell user "press Esc" |
-| Run unit tests | DC → `start_process` with the test command | display cmd, ask user | display cmd, ask user |
-| Drive Claude in Chrome (browser-test) | `mcp__Claude_in_Chrome__*` directly — separate MCP, not the host driver | same | same |
-| Read git log | DC → `git log` on host workspace, OR sandbox bash on mounted dir (both work for read) | same | same |
-| Commit `docs/e2e-testing/*` | Cowork's `Write` to mounted dir, then DC → `git add && git commit` | same with user running git | user runs git |
+| Action | Path A | Path D (SSH/remote) | Path B | Path C |
+|---|---|---|---|---|
+| Write directive | Use `Write` tool on the mounted workspace dir (works regardless of path) | Local `Write` to mounted dir, then DC → `scp` or `rsync` to remote workspace (or shared NFS); CC on remote reads from remote path | same | same |
+| Send trigger to CC | `Desktop_Commander__start_process` → `echo '...' \| ~/.cache/ccbridge/send.sh` | DC → `ssh "$SSH_TARGET" 'echo "..." \| ~/.cache/ccbridge/send.sh'` | screenshot Terminal, ask user to run `echo` cmd | display cmd, user runs it |
+| Read terminal | DC → `~/.cache/ccbridge/read.sh` | DC → `ssh "$SSH_TARGET" '~/.cache/ccbridge/read.sh'` | `computer-use__screenshot` + visual inspection | ask user to paste recent output |
+| Approve a prompt | watchdog handles automatically (if started) | watchdog runs on REMOTE (started over ssh); auto-approves prompts there | watchdog (if started) | user approves manually |
+| Interrupt hung CC | DC → `keys.sh esc` | DC → `ssh "$SSH_TARGET" '~/.cache/ccbridge/keys.sh esc'` | `computer-use__key` (tier-click — `key` may be allowed; verify with `request_access`) | tell user "press Esc" |
+| Run unit tests | DC → `start_process` with the test command | DC → `ssh "$SSH_TARGET" 'cd <remote-workspace> && <test-cmd>'` | display cmd, ask user | display cmd, ask user |
+| Drive Claude in Chrome (browser-test) | `mcp__Claude_in_Chrome__*` directly — separate MCP, not the host driver | same — Chrome MCP attaches to the LOCAL Chrome regardless of where CC is running. Browser-test still works as long as the dev server URL is reachable from the local Chrome (port-forward via ssh if needed) | same | same |
+| Read git log | DC → `git log` on host workspace, OR sandbox bash on mounted dir (both work for read) | DC → `ssh "$SSH_TARGET" 'cd <remote-workspace> && git log ...'` | same | same |
+| Commit `docs/e2e-testing/*` | Cowork's `Write` to mounted dir, then DC → `git add && git commit` | Write to local mount, copy to remote, then DC → `ssh ... 'git add && git commit'` (or commit locally and `git push` to a remote the other Mac pulls) | same with user running git | user runs git |
 
 ## Tier-click reality (computer-use + Terminal)
 
@@ -156,11 +181,47 @@ Before any `computer-use` call:
    - `full` → screenshot + clicks + typing + everything (most native apps)
 5. If your task needs a tool not available at the granted tier → ask the user to re-grant at the needed tier, OR switch paths.
 
+## Path D — SSH / remote-Mac (advanced)
+
+Path D is for the case where Cowork (and Desktop_Commander) run on the user's LOCAL Mac, but CC actually runs on a different REMOTE Mac reached over SSH — e.g. a beefier workstation, a cloud Mac runner, or a colleague's box you're temporarily driving from.
+
+**Setup:**
+
+1. Export `SSH_TARGET=user@remote-mac.local` (or any value `ssh` accepts) in the env Cowork sees.
+2. Probe: `mcp__Desktop_Commander__start_process(command="bash <plugin-path>/skills/sd-claude-code-access/scripts/ssh_probe.sh \"$SSH_TARGET\"")`. Must exit 0 with `READY <macos-version> <claude-version>` before any drive operation.
+3. Install bridge scripts ON THE REMOTE — one-time per remote host:
+   ```bash
+   ssh "$SSH_TARGET" 'bash -s' < <plugin-path>/skills/sd-claude-code-access/scripts/install.sh
+   # or, for visibility:
+   scp -r <plugin-path>/skills/sd-claude-code-access/scripts/ "$SSH_TARGET":/tmp/ccbridge-src
+   ssh "$SSH_TARGET" 'bash /tmp/ccbridge-src/install.sh'
+   ```
+4. Start the watchdog on the remote (with `WORKSPACE` pointing at the REMOTE workspace path):
+   ```
+   mcp__Desktop_Commander__start_process(
+     command="ssh \"$SSH_TARGET\" 'WORKSPACE=<remote-ws> nohup ~/.cache/ccbridge/start_watchdog.sh > /tmp/watchdog.log 2>&1 &'"
+   )
+   ```
+5. From now on, every drive operation wraps Path A's command with `ssh "$SSH_TARGET" '...'`. The per-action table above lists the wrapped form.
+
+**Tradeoffs:**
+
+- ✅ Works for off-laptop / cloud Mac runners — CC can run on a 192 GB workstation while you drive from a MacBook Air.
+- ✅ Same `send.sh` / `watchdog.sh` substrate, just over ssh. Bridge mechanics are unchanged.
+- ❌ Each CC interaction adds 100-500 ms SSH overhead. Multiply by paste-verify polling and it adds up — pre-write phase directives instead of chatty back-and-forth.
+- ❌ `WORKSPACE` and any path passed to bridge scripts must be REMOTE paths (the workspace on the remote Mac, not the local mount).
+- ❌ Watchdog runs remotely — its log is on the remote, fetch with `ssh "$SSH_TARGET" 'cat ~/.cache/ccbridge/watchdog.log'`.
+- ❌ The Chrome MCP (for browser-test) still talks to the LOCAL Chrome. If the dev server is on the remote, set up port-forwarding (`ssh -L 5173:localhost:5173 "$SSH_TARGET"`) so `http://localhost:5173` works for the local browser.
+
+**When to use it vs ssh_variant.md headless mode:** see `references/ssh_variant.md` — Path D is the interactive-TUI variant (driving the remote's Terminal.app over ssh), whereas the "Variant A" in ssh_variant.md uses `claude -p -c` headless invocations. Path D preserves the live-TUI feel; the headless variant is cleaner when no Terminal is open on the remote.
+
 ## Watchdog lifecycle by path
 
 The watchdog (`watchdog.sh`) is a long-running background loop on the user's Mac that auto-approves CC permission prompts. It MUST run on the host.
 
 **Path A:** `Desktop_Commander__start_process` with `nohup ... &` — the process persists after the tool call returns. You can check on it later with `Desktop_Commander__list_processes`.
+
+**Path D:** watchdog runs on the REMOTE Mac. Launch via `ssh "$SSH_TARGET" 'nohup ~/.cache/ccbridge/start_watchdog.sh > /tmp/watchdog.log 2>&1 &'`. Health-check via `ssh "$SSH_TARGET" 'pgrep -lf watchdog.sh'`.
 
 **Path B:** spawn it via osascript that the user runs once. Cowork can poll via `read.sh` over Desktop_Commander or visually via screenshots.
 
@@ -168,12 +229,12 @@ The watchdog (`watchdog.sh`) is a long-running background loop on the user's Mac
 
 ## Failure modes by path
 
-| Symptom | Path A likely cause | Path B likely cause | Path C likely cause |
-|---|---|---|---|
-| Send didn't land | DC daemon not running on host | computer-use lost Terminal focus | user typed something else mid-paste |
-| Watchdog silent | watchdog process died — restart via DC | watchdog never started | user forgot to start it |
-| Can't read terminal | DC process call timed out | screenshot didn't capture latest scrollback | user pasted stale output |
-| Auth/permission denied | DC daemon needs re-auth on host | request_access dialog not approved | n/a |
+| Symptom | Path A likely cause | Path D likely cause | Path B likely cause | Path C likely cause |
+|---|---|---|---|---|
+| Send didn't land | DC daemon not running on host | ssh connection dropped; remote watchdog/Terminal hung; SSH_TARGET stale | computer-use lost Terminal focus | user typed something else mid-paste |
+| Watchdog silent | watchdog process died — restart via DC | remote watchdog crashed; ssh-into-remote re-launches it | watchdog never started | user forgot to start it |
+| Can't read terminal | DC process call timed out | ssh timeout; high latency network; remote Terminal not running | screenshot didn't capture latest scrollback | user pasted stale output |
+| Auth/permission denied | DC daemon needs re-auth on host | ssh key not authorized on remote; password auth attempted | request_access dialog not approved | n/a |
 
 ## What the SKILL.md pre-flight should do
 
@@ -182,11 +243,15 @@ This is THE step that has to happen before anything else:
 ```
 Step 0: Substrate detection
   - Probe for Desktop_Commander, computer-use, Claude_in_Chrome
-  - If Desktop_Commander present → Path A; install bridge via DC; start watchdog via DC
+  - If Desktop_Commander present:
+      → if SSH_TARGET set, run ssh_probe.sh:
+          exit 0 → Path D (remote Mac via SSH)
+          else   → Path A (local Mac)
+      → otherwise Path A; install bridge via DC; start watchdog via DC
   - Else if computer-use present → Path B; request_access for Terminal;
     fall back to user-driven install (Path C subset)
   - Else → Path C; surface required commands to user, wait for confirmation
-  - Record chosen path in <workspace>/.cc/state.json as event substrate_chosen path=<A|B|C>
+  - Record chosen path in <workspace>/.cc/state.json as event substrate_chosen path=<A|B|C|D>
 ```
 
 Then proceed to existing pre-flight (read STATUS.md, etc.).
@@ -197,4 +262,6 @@ Then proceed to existing pre-flight (read STATUS.md, etc.).
 - **Don't skip request_access for computer-use.** The first computer-use call will be denied otherwise.
 - **Don't try to `type` into Terminal via computer-use.** It's tier-click. Use a shelled-out osascript via Desktop_Commander, or fall to Path C.
 - **Don't run two watchdogs.** The driver lock prevents this on the host side, but Path B/C runs may not set `WORKSPACE` — risk of duplicate.
+- **Don't mix Path A and Path D in one session.** Pick one — driving the local Mac AND a remote Mac via the same Cowork session leads to confused state events and lock contention.
+- **Don't trust `SSH_TARGET` without running `ssh_probe.sh` first.** A reachable host that lacks `claude` or `osascript` cannot be Path D — re-probe before driving.
 - **Don't proceed to phase 1 without confirming the bridge is alive via diagnose.sh.** This is the only honest "go" signal.

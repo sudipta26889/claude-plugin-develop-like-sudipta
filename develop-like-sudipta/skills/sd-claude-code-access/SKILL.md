@@ -138,25 +138,39 @@ This skill captures methodology developed specifically for the Cowork↔CC bridg
    If not macOS → tell user this skill is macOS-only and STOP.
 
 2. Probe MCP availability (inspect tool list, no calls yet):
-   - mcp__Desktop_Commander__* present?  → Path A (preferred)
+   - mcp__Desktop_Commander__* present?  → Path A (preferred local)
+   - SSH_TARGET env var set?              → Path D (advanced — remote Mac via SSH;
+                                            requires Path A + ssh_probe.sh exit 0)
    - mcp__computer-use__* present?       → Path B (fallback)
    - mcp__Claude_in_Chrome__* present?   → required for browser-test step
    - None of the above?                   → Path C (manual)
 
-3. Request access (Path B only):
+3. If considering Path D, run the SSH probe:
+   mcp__Desktop_Commander__start_process(
+     command="bash ~/.claude/plugins/.../scripts/ssh_probe.sh \"$SSH_TARGET\""
+   )
+   Exit 0 + "READY <macos-ver> <claude-ver>" → Path D viable.
+   Exit 1/2/3/4 → Path D not viable; fall back to Path A.
+   Surface the probe result to the user BEFORE driving anything.
+
+4. Request access (Path B only):
    mcp__computer-use__request_access(applications=["Terminal"])
    Verify the response says tier="click" (Terminal/iTerm are tier-click).
    Remember: tier-click means TYPING is blocked at the MCP level.
    Anything that needs to type must shell out via Desktop_Commander
    (Path A) or be relayed to the user (Path C subset).
 
-4. Choose path. Path A is always preferred when available; it has no
-   tier restrictions and runs commands directly on the Mac. Record
-   the choice as:
-   state.sh substrate_chosen path=<A|B|C> reason=<short>
+5. Choose path. Decision order:
+     Path D (if SSH_TARGET set AND ssh_probe READY)
+   > Path A (local Desktop_Commander, no SSH)
+   > Path B (computer-use, tier-click constraints apply)
+   > Path C (manual relay)
+   Record the choice as:
+   state.sh substrate_chosen path=<A|B|C|D> reason=<short>
 
-5. Verify CC is actually running:
+6. Verify CC is actually running:
    Path A: DC → `pgrep -lf claude` + osascript tab-name probe
+   Path D: DC → `ssh "$SSH_TARGET" 'pgrep -lf claude'` + remote osascript probe
    Path B: screenshot Terminal, visually confirm CC prompt
    Path C: ask user "Is CC running in your Terminal? Yes/no."
 ```
@@ -282,7 +296,9 @@ CC's checkpoint summaries describe intent; a passing test suite describes correc
 
 **End of run:** the `/e2e-suite` command stitches all per-phase markdown into one `docs/e2e-testing/E2E-SUITE.md` and emits a `docs/e2e-testing/specs/e2e.spec.ts` umbrella spec.
 
-Detailed protocol: [`references/browser_testing.md`](references/browser_testing.md). Playwright emission patterns: [`references/playwright_generation.md`](references/playwright_generation.md).
+> **Backend-only phases:** if a phase has no UI surface (REST endpoint additions, gRPC handlers, queue consumers, background jobs), the browser-test step is replaced by **API-level testing** — contract assertions against `openapi.yaml` / `*.proto` / `schema.graphql`, or curl-based fixture comparison when no schema source is present. Routing is automatic from the directive's acceptance criteria, or forced with `BACKEND_ONLY=1`. The per-phase output lives at `docs/api-testing/phase-<N>-<slug>.md` (mirrors browser-test's contract). See [`references/api_testing.md`](references/api_testing.md).
+
+Detailed protocol: [`references/browser_testing.md`](references/browser_testing.md). Playwright emission patterns: [`references/playwright_generation.md`](references/playwright_generation.md). API-level analogue: [`references/api_testing.md`](references/api_testing.md).
 
 ## Reading the codebase like a real manager
 
@@ -375,6 +391,7 @@ Full playbook: [`references/managing_long_runs.md`](references/managing_long_run
 | `references/subagent_patterns.md` | Parallel audit/poll/draft when subagent spawning is available. |
 | `references/browser_testing.md` | Per-phase browser-verification loop — Chrome MCP usage, test md schema, auth handling, screenshot conventions, fail→fix loop. |
 | `references/playwright_generation.md` | Emitting Playwright spec files from test markdown — selectors, assertions, fixtures, naming, idempotent overwrite rules. |
+| `references/api_testing.md` | Backend-only phase verification — replaces browser-test when no UI surface. Routing (`BACKEND_ONLY=1` + auto-detect), schema-source detection (OpenAPI / GraphQL / proto), per-endpoint test pattern, idempotency assertions, language-detected spec emission. |
 | `references/verify_gate.md` | Auto-detection for static checks + project test runners (pytest/jest/vitest/cargo/go/maven), `.cc/config.json` schema, fail-fast semantics. |
 | `references/bug_driven_tdd.md` | The red-test-first protocol. Worked examples for unit-only, browser-only, and both-layer bugs. Anti-patterns. Audit checklist for "did they write the failing test first?" |
 | `references/danger_pattern_governance.md` | Adding/auditing a danger pattern, debugging a false positive, or wiring `WATCHDOG_DRYRUN`. |

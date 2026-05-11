@@ -1,5 +1,7 @@
 # SSH-bridge variant — when Cowork and CC are on different machines
 
+> This is **Path D** in the substrate-detection ladder — see [`references/substrate_and_access.md`](substrate_and_access.md) for the probe (`scripts/ssh_probe.sh`) + selection flow + per-action mapping. This document covers the two SSH-specific implementation variants (interactive TUI vs headless `claude -p -c`).
+
 If Cowork's sandbox runs on machine A and CC runs on machine B (e.g., Cowork on a MacBook Air, CC on a workstation accessed via SSH), the local-Terminal bridge doesn't apply directly. There are two viable substitutes.
 
 ## Substrate detection
