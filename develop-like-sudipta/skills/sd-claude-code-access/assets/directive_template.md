@@ -7,6 +7,26 @@
 <2-4 sentences. Why does this phase exist? What gap does it close? What
 invariant does it preserve? Set the model's frame BEFORE the tasks.>
 
+## UI conventions (apply to any task that adds or modifies UI components)
+
+Every interactive element (button, input, link, form, dialog, tab, etc.)
+MUST have a stable `data-testid` attribute. Naming convention:
+`<feature>-<element>-<action-or-state>`, kebab-case. Examples:
+
+- `login-email-input`
+- `login-password-input`
+- `login-submit-button`
+- `nav-dashboard-link`
+- `cart-checkout-button`
+- `dialog-confirm-yes` / `dialog-confirm-no`
+
+This is non-negotiable. Browser tests reference elements by testid first;
+without testids, selectors fall back to text/role and become brittle.
+
+If you skip a testid because "this element is for layout only" — fine,
+but call it out in the commit so the browser-test step doesn't waste
+time looking for it.
+
 ## Tasks (<M> commits)
 
 ### <N>.1 <Short imperative title>

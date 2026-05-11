@@ -53,6 +53,13 @@ Always prefer in this order:
 4. `locator('css-selector')` — CSS as last resort
 5. XPath — never, except for legacy / iframe edge cases
 
+> **Source-side discipline:** the directive template at
+> `assets/directive_template.md` REQUIRES every interactive UI element
+> to carry a stable `data-testid`. This is enforced at directive time,
+> not at test time — the developer adds testids when writing the
+> component, not when writing the test. Spec generation can therefore
+> default to `getByTestId(...)` selectors with high confidence.
+
 If the markdown's step references an element by visible text, emit `getByText` or `getByRole`. If the project already uses `data-testid` widely (check existing components), prefer that and recommend CC add testids as part of the directive for that phase.
 
 ## Idempotent overwrite

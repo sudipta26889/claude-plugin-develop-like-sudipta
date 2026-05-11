@@ -95,6 +95,33 @@ Before persisting `ai_extraction.ocr_text`: run `pii.scrub_pii_text` (extends
 
 CC executed all 4 commits cleanly. The hard-limits table flagged invariants by reference to a previous deliverable (the pre-mortem), giving CC a vocabulary that mapped to its own task tracker.
 
+## Example — directive with testid requirement
+
+A login form directive should call out every interactive element with the
+testid it must carry. This is what enables the downstream browser-test
+step to write stable Playwright selectors instead of guessing.
+
+```markdown
+## Task: implement /login page
+
+**What to build:**
+- Email input (testid: `login-email-input`, type=email, required, placeholder "you@company.com")
+- Password input (testid: `login-password-input`, type=password, required)
+- Submit button (testid: `login-submit-button`, disabled until form valid)
+- Error banner (testid: `login-error-banner`, shows on 401 response, otherwise hidden)
+- Forgot-password link (testid: `login-forgot-link`, href="/forgot")
+
+**Acceptance:**
+- POST /api/login with valid creds → redirect to /dashboard
+- POST with invalid creds → error banner visible with server message
+- No console errors on render
+- All 5 testids present in DOM (browser-test will assert)
+```
+
+The browser-test step that follows can then write a Playwright spec that
+uses these stable selectors — no guessing, no flake when CC renames a
+button label. See `playwright_generation.md` § Selector strategy.
+
 ## Bad directive shapes
 
 Things that tend to misfire:
