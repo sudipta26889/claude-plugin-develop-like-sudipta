@@ -30,6 +30,51 @@ Events you should write manually (or have CC's directives instruct it to write):
 - `checkpoint_paused` — when CC pauses for review
 - `directive_authored` — when you finish writing `.cc/phase-N.md`
 
+## State events (canonical reference)
+
+The table below is the closed set of events the bundled scripts and the documented
+manager-side workflow emit. Use it as the contract when writing new `state.sh` callers
+or new consumers (resume probes, dashboards, run summaries). Anything not in this table
+is a one-off and should not be assumed durable.
+
+Columns: **Emitted by** identifies the script or workflow step that fires the event.
+**Required keys** are the `key=value` pairs callers MUST pass after the event name.
+**Optional keys** are accepted but not always present.
+
+| Event | Emitted by | Required keys | Optional keys |
+|---|---|---|---|
+| `phase_start` | manager (cc-drive per-phase loop) | `phase=<N>` | — |
+| `phase_complete` | manager (after all greens) | `phase=<N>` | `commits=<N>`, `tests=<N>`, `elapsed=<X>m` |
+| `phase_verify_step_passed` | verify-gate runner (per command) | `step="<command>"` | — |
+| `phase_verify_passed` | verify-gate runner (all green) | `phase=<N>` | — |
+| `phase_browser_test_passed` | per-phase browser-test loop | `phase=<N>` | — |
+| `phase_browser_test_failed` | per-phase browser-test loop | `phase=<N>` | `evidence_dir=<rel-path>` |
+| `bug_resolved` | bug-driven TDD (after 4 greens) | `bug=<id>`, `phase=<N>` | — |
+| `nudge_sent` | `nudge_if_stuck.sh` (confirmed hang) | `elapsed=<S>s` | `reason=<short>` |
+| `watchdog_started` | `start_watchdog.sh` | `pid=<N>` | — |
+| `watchdog_stopped` | `stop_watchdog.sh` | — | `pid=<N>` |
+| `substrate_chosen` | manager (Step 0 substrate detection) | `path=<A\|B\|C\|D>`, `reason=<short>` | `mcps_available=<csv>` |
+| `message_sent` | `send.sh` (paste verified) | `len=<N>`, `frag=<middle-fragment>` | — |
+| `message_send_failed` | `send.sh` (verify failed) | `frag=<middle-fragment>` | — |
+| `danger_blocked` | `watchdog.sh` (refused prompt) | `fp=<fingerprint>`, `pattern=<regex>` | — |
+| `danger_dryrun` | `watchdog.sh` (`WATCHDOG_DRYRUN=1`) | `fp=<fingerprint>`, `pattern=<regex>` | — |
+| `prompt_approved` | `watchdog.sh` (auto-approved) | `fp=<fingerprint>` | — |
+| `user_direct_input` | manager (relayed user keystrokes) | `snippet="<first 80 chars>"` | — |
+
+Notes on usage:
+
+- **Required keys** are what consumers grep for. `phase_complete` without `phase=` will
+  show up in `tail` but be invisible to the `grep '"phase":"<N>"'` patterns the resume
+  probe relies on.
+- **Fingerprints** (`fp=`) on watchdog events are short hashes of the prompt buffer,
+  not random ids — re-encountering the same prompt gets the same fingerprint, which
+  is how aggregation spots repeat refusals.
+- **Manually emitted events** (`phase_start`, `phase_complete`, `substrate_chosen`,
+  `user_direct_input`) come from the manager (Cowork) running `state.sh` itself.
+  Everything else is fired by a bundled script. If you're adding a new manager-side
+  workflow step worth tracking across runs, prefer extending this table over invented
+  ad-hoc event names.
+
 ## Resume probe
 
 When picking up a session, run:
