@@ -101,6 +101,54 @@ if [ ! -f "$DIR_FILE" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Pre-flight: confirm git is on PATH and that $WS actually is a git
+# workspace. Without this, the later `git log` calls were swallowing fatals
+# via `2>/dev/null` and silently producing an empty audit. Exit 2 here so
+# the caller can distinguish "no commits to look at" from "I have nothing to
+# tell you".
+# ---------------------------------------------------------------------------
+if ! command -v git >/dev/null 2>&1; then
+  echo "[audit] git not found on PATH — cannot run audit" >&2
+  exit 2
+fi
+if ! (cd "$WS" && git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+  echo "[audit] $WS is not a git repository" >&2
+  exit 2
+fi
+
+# ---------------------------------------------------------------------------
+# Shallow / fresh-repo guard. The default --since=HEAD~20 errors on repos
+# with fewer than 20 commits ("fatal: ambiguous argument 'HEAD~20'…"). We
+# used to silence that with `2>/dev/null` and produce a blank audit; now we
+# detect the shallow case up front and fall back to --root so the first
+# commit becomes the implicit floor. Only kicks in for the relative
+# HEAD~N[..HEAD] form — explicit SHAs / refs / --root pass through.
+# ---------------------------------------------------------------------------
+since_depth=""
+case "$SINCE" in
+  HEAD~*..HEAD)
+    since_depth="${SINCE#HEAD~}"
+    since_depth="${since_depth%..HEAD}"
+    ;;
+  HEAD~*)
+    since_depth="${SINCE#HEAD~}"
+    ;;
+esac
+case "$since_depth" in
+  ''|*[!0-9]*) since_depth="" ;;
+esac
+if [ -n "$since_depth" ]; then
+  commit_count=$(cd "$WS" && git rev-list --count HEAD 2>/dev/null || echo 0)
+  case "$commit_count" in
+    ''|*[!0-9]*) commit_count=0 ;;
+  esac
+  if [ "$commit_count" -le "$since_depth" ]; then
+    echo "[audit] only $commit_count commit(s) in $WS — falling back to --root (requested depth: $since_depth)" >&2
+    SINCE="--root"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # do_audit — single pass. Echoes the human-readable report to stdout. Returns
 # 0 if the audit is clean, 2 if any expected commit or directive-mentioned
 # file is missing from the range (the retryable laggy-drift signal).
@@ -108,24 +156,58 @@ fi
 do_audit() {
   cd "$WS"
 
+  # Translate $SINCE into a git-log range. `--root` means "from the very
+  # first commit"; everything else is `<since>..HEAD`. Without this split,
+  # passing `--root..HEAD` would mean something different (and wrong).
+  if [ "$SINCE" = "--root" ]; then
+    RANGE_LABEL="--root..HEAD"
+    set -- --root HEAD
+  else
+    RANGE_LABEL="$SINCE..HEAD"
+    set -- "$SINCE..HEAD"
+  fi
+
   echo "============================================================"
   echo "  AUDIT: Phase $PHASE"
   echo "  Directive: $DIR_FILE"
-  echo "  Range:     $SINCE..HEAD"
+  echo "  Range:     $RANGE_LABEL"
   echo "============================================================"
   echo
 
   # 1. Commits in range
+  # Capture stderr so a genuine git error (bad ref, corrupted repo) surfaces
+  # to the user instead of being silently swallowed by `2>/dev/null`.
   echo "── Commits in range ──"
-  git log --oneline "$SINCE..HEAD" 2>/dev/null | sed 's/^/  /'
-  N_COMMITS=$(git log --oneline "$SINCE..HEAD" 2>/dev/null | wc -l | tr -d ' ')
+  git_err=$(mktemp 2>/dev/null || echo "/tmp/audit_git_err.$$")
+  if ! git log --oneline "$@" 2>"$git_err" | sed 's/^/  /'; then
+    cat "$git_err" >&2
+    rm -f "$git_err"
+    echo "[audit] git log failed for range $RANGE_LABEL" >&2
+    return 1
+  fi
+  if [ -s "$git_err" ]; then
+    cat "$git_err" >&2
+    rm -f "$git_err"
+    echo "[audit] git emitted errors for range $RANGE_LABEL — refusing to report empty audit" >&2
+    return 1
+  fi
+  rm -f "$git_err"
+  N_COMMITS=$(git log --oneline "$@" 2>/dev/null | wc -l | tr -d ' ')
   echo
   echo "  Total: $N_COMMITS commits"
   echo
 
   # 2. Expected commit messages from directive
   echo "── Expected commit messages (from directive § Commit pattern) ──"
-  EXPECTED=$(awk '/^## *Commit pattern/,/^## /' "$DIR_FILE" | grep -oE '`[a-zA-Z][a-zA-Z0-9_./()+-]*: [^`]+`' | tr -d '`' | sed 's/^/  - /' || true)
+  # NOTE: The old form `awk '/^## *Commit pattern/,/^## /'` collapses to a
+  # single line — the END pattern matches the START heading and the range
+  # closes immediately. Use explicit state so we skip the start heading and
+  # exit on the NEXT `## ` heading.
+  EXPECTED=$(awk '
+    /^## *Commit pattern/ { in_section = 1; next }
+    /^## / && in_section { exit }
+    in_section { print }
+  ' "$DIR_FILE" | grep -oE '`[a-zA-Z][a-zA-Z0-9_./()+-]*: [^`]+`' | tr -d '`' | sed 's/^/  - /' || true)
   if [ -z "$EXPECTED" ]; then
     echo "  _(no commit-pattern section found)_"
   else
@@ -143,13 +225,17 @@ do_audit() {
     # loop body runs in the current shell.
     while IFS= read -r line; do
       [ -z "$line" ] && continue
-      PATTERN=$(echo "$line" | sed 's/^  - //; s/(/\\(/g; s/)/\\)/g')
-      HIT=$(git log --oneline "$SINCE..HEAD" --grep="$PATTERN" 2>/dev/null | head -1)
+      # Strip the "  - " bullet. Use --fixed-strings so parens, slashes and
+      # other regex meta in commit-message prefixes (`feat(core)`, `fix/api`)
+      # match literally — the previous `sed 's/(/\\(/g; s/)/\\)/g'` produced
+      # a BRE group expression that never matched the literal text.
+      PATTERN=$(echo "$line" | sed 's/^  - //')
+      HIT=$(git log --oneline "$@" --fixed-strings --grep="$PATTERN" 2>/dev/null | head -1)
       if [ -n "$HIT" ]; then
         echo "  ✓ $line"
         echo "      → $HIT"
       else
-        echo "  ✗ $line  (NOT FOUND in $SINCE..HEAD)"
+        echo "  ✗ $line  (NOT FOUND in $RANGE_LABEL)"
         COMMIT_MISSES=$((COMMIT_MISSES + 1))
       fi
     done <<EOF
@@ -165,7 +251,17 @@ EOF
   echo
 
   echo "── Files changed in range ──"
-  CHANGED=$(git log --name-only --pretty=format: "$SINCE..HEAD" 2>/dev/null | sort -u | grep -v '^$' | sed 's/^/  /')
+  # Same stderr discipline as the first git log: surface real errors,
+  # don't silently produce an empty list.
+  git_err=$(mktemp 2>/dev/null || echo "/tmp/audit_git_err.$$")
+  CHANGED=$(git log --name-only --pretty=format: "$@" 2>"$git_err" | sort -u | grep -v '^$' | sed 's/^/  /')
+  if [ -s "$git_err" ]; then
+    cat "$git_err" >&2
+    rm -f "$git_err"
+    echo "[audit] git log --name-only failed for range $RANGE_LABEL" >&2
+    return 1
+  fi
+  rm -f "$git_err"
   echo "$CHANGED"
   echo
 

@@ -256,13 +256,192 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Case 5 — Commit-pattern parsing actually captures the section body
+#
+# Pre-existing bug: `awk '/^## *Commit pattern/,/^## /'` collapses because
+# the END pattern matches the START heading. Result: the "Expected commit
+# messages" block ended up empty even when the directive listed several
+# patterns. Fix: explicit state machine — skip the start line, capture
+# until the NEXT `## ` heading, exit.
+#
+# This case writes a directive with TWO commit patterns under
+# "## Commit pattern" plus a "## Other" heading underneath. After the fix,
+# the audit report's "Expected commit messages" block must contain BOTH
+# patterns. Pre-fix, it would show only "(no commit-pattern section found)".
+# ---------------------------------------------------------------------------
+echo
+echo "── Case 5: commit-pattern parser captures section body ──"
+REPO5="$(mktemp -d "$TMP_ROOT/audit-retry-XXXXXX")"
+make_repo "$REPO5"
+
+# Overwrite the fixture directive with one that exercises the parser. We
+# want a Commit pattern section with multiple entries, followed by an
+# unrelated `## ` heading.
+cat > "$REPO5/.cc/phase-1.md" <<'EOF'
+# Phase 1 — case 5 directive
+
+## Commit pattern
+
+- `feat(core): add foo`
+- `fix(api): handle 5xx`
+
+## Other notes
+
+Random prose that should NOT be parsed as a commit pattern.
+EOF
+
+set +e
+bash "$AUDIT" "$REPO5" 1 --since=HEAD~5 >"$REPO5/audit.out" 2>"$REPO5/audit.err"
+rc5=$?
+set -e
+
+echo "  exit code: $rc5"
+echo "  stdout 'Expected commit messages' block:"
+awk '/Expected commit messages/{flag=1;next} flag && /^── /{flag=0} flag' \
+  "$REPO5/audit.out" | sed 's/^/    /'
+
+if grep -q 'feat(core): add foo' "$REPO5/audit.out"; then
+  pass "audit extracted 'feat(core): add foo' from § Commit pattern"
+else
+  fail "expected 'feat(core): add foo' in audit output, not found"
+fi
+if grep -q 'fix(api): handle 5xx' "$REPO5/audit.out"; then
+  pass "audit extracted 'fix(api): handle 5xx' from § Commit pattern"
+else
+  fail "expected 'fix(api): handle 5xx' in audit output, not found"
+fi
+# Counter-assertion: must NOT contain the "no commit-pattern section" sentinel.
+if grep -q 'no commit-pattern section found' "$REPO5/audit.out"; then
+  fail "audit reported empty commit-pattern section despite valid directive"
+else
+  pass "did not fall through to 'no commit-pattern section' sentinel"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 6 — Shallow / fresh repo (< 20 commits)
+#
+# Pre-existing bug: default --since=HEAD~20 errors on repos with fewer than
+# 20 commits ("fatal: ambiguous argument 'HEAD~20'…"). The old code
+# silenced that with `2>/dev/null` and reported a blank, "clean" audit.
+#
+# After the fix, audit.sh detects the shallow case and falls back to
+# --root. The smoke test: 3 commits, no --since override (so default is
+# HEAD~20), assert exit 0 with no leaked "fatal: ambiguous argument".
+# ---------------------------------------------------------------------------
+echo
+echo "── Case 6: shallow repo (3 commits < default --since=HEAD~20) ──"
+REPO6="$(mktemp -d "$TMP_ROOT/audit-retry-XXXXXX")"
+mkdir -p "$REPO6/.cc"
+cd "$REPO6"
+git init -q
+git config user.email "test@example.com"
+git config user.name "Test User"
+i=0
+while [ "$i" -lt 3 ]; do
+  echo "seed $i" >> README.md
+  git add README.md
+  git commit -q -m "chore: seed $i"
+  i=$((i + 1))
+done
+cat > .cc/phase-1.md <<'EOF'
+# Phase 1 — case 6 directive
+
+## Commit pattern
+
+- `chore: seed 0`
+EOF
+git add .cc/phase-1.md
+git commit -q -m "chore: seed 0"
+cd - >/dev/null
+
+set +e
+bash "$AUDIT" "$REPO6" 1 >"$REPO6/audit.out" 2>"$REPO6/audit.err"
+rc6=$?
+set -e
+
+echo "  exit code: $rc6"
+echo "  stderr tail:"
+tail -5 "$REPO6/audit.err" 2>/dev/null | sed 's/^/    /'
+
+# Exit code: 0 (clean — we crafted the directive to match the commit) or 1
+# (drift, since "Files" mention something not in the repo). Either way it
+# must NOT exit on a "fatal" git error.
+if [ "$rc6" -eq 0 ] || [ "$rc6" -eq 1 ] || [ "$rc6" -eq 2 ]; then
+  pass "audit ran on shallow repo without crashing on a git fatal (rc=$rc6)"
+else
+  fail "audit exited with unexpected code $rc6 on shallow repo"
+fi
+
+# Critical assertion: no leaked "fatal: ambiguous argument" on stderr.
+if grep -q 'fatal: ambiguous argument' "$REPO6/audit.err" 2>/dev/null; then
+  fail "shallow repo leaked 'fatal: ambiguous argument' to stderr"
+else
+  pass "no 'fatal: ambiguous argument' leaked to stderr"
+fi
+
+# Should have logged the fallback decision so the operator can see it.
+if grep -q 'falling back to --root' "$REPO6/audit.err" 2>/dev/null; then
+  pass "logged --root fallback to stderr"
+else
+  fail "expected '--root fallback' log line on stderr, not found"
+fi
+
+# And the audit report should actually contain commit listings — proving
+# the fallback retrieved real data instead of producing an empty report.
+if grep -q 'chore: seed' "$REPO6/audit.out" 2>/dev/null; then
+  pass "audit report contains commits from the shallow repo"
+else
+  fail "audit report empty despite shallow repo having commits"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 7 — Genuine git error: workspace is not a git repo
+#
+# Pre-existing bug: a non-repo workspace silently produced an empty,
+# "clean" audit because every `git log` call had its stderr swallowed.
+# After the fix, audit.sh must detect this up front and exit 2 with a
+# clear error message.
+# ---------------------------------------------------------------------------
+echo
+echo "── Case 7: workspace is not a git repo ──"
+REPO7="$(mktemp -d "$TMP_ROOT/audit-retry-XXXXXX")"
+# No `git init`. But we DO need a directive for the script to get past its
+# pre-flight directive check — otherwise it would exit 1 on missing
+# directive, not 2 on missing repo.
+mkdir -p "$REPO7/.cc"
+cat > "$REPO7/.cc/phase-1.md" <<'EOF'
+# Phase 1 — case 7 directive
+EOF
+
+set +e
+bash "$AUDIT" "$REPO7" 1 --since=HEAD~5 >"$REPO7/audit.out" 2>"$REPO7/audit.err"
+rc7=$?
+set -e
+
+echo "  exit code: $rc7"
+echo "  stderr tail:"
+tail -5 "$REPO7/audit.err" 2>/dev/null | sed 's/^/    /'
+
+if [ "$rc7" -eq 2 ]; then
+  pass "non-repo workspace exits 2 (genuine git error)"
+else
+  fail "expected exit 2 on non-repo, got $rc7"
+fi
+
+if grep -q 'not a git repository' "$REPO7/audit.err" 2>/dev/null; then
+  pass "clear 'not a git repository' message on stderr"
+else
+  fail "expected 'not a git repository' on stderr, not found"
+fi
+
+# ---------------------------------------------------------------------------
 # Cleanup + verdict
 # ---------------------------------------------------------------------------
-rm -rf "$REPO1" "$REPO2" "$REPO3" "$REPO4"
+rm -rf "$REPO1" "$REPO2" "$REPO3" "$REPO4" "$REPO5" "$REPO6" "$REPO7"
 
 echo
 if [ "$fails" -eq 0 ]; then
-  echo "PASS — both retry cases behave as specified."
+  echo "PASS — all audit cases behave as specified."
   exit 0
 else
   echo "FAIL — $fails assertion(s) failed."
