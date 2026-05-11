@@ -1,7 +1,8 @@
 # develop-like-sudipta
 
-**Version:** 4.0.0
-**Tagline:** Battle-tested development discipline for Claude Code — 11 engineering pillars, real-browser verification, bug-driven TDD, substrate-aware end-to-end CC driving from Cowork, cross-browser/mobile + a11y + streaming testing, worktree-aware orchestration, and commit-time bug-TDD enforcement via git hooks.
+**Version:** 4.1.1
+**Tagline:** Battle-tested development discipline for Claude Code — 11 engineering pillars, real-browser verification, bug-driven TDD, substrate-aware end-to-end CC driving from Cowork, cross-browser/mobile + a11y + streaming testing, worktree-aware orchestration, commit-time bug-TDD enforcement via git hooks, and Karpathy-style autoresearch (self-improving skills via overnight propose-score-commit loops).
+**v4.1.x (May 2026):** Karpathy autoresearch — every skill ships with `autoresearch/{program.md, score.sh, target.txt}`, a new `autoresearch` meta-skill drives the loop, 4 new slash commands operate the system.
 **v4.0.0 (May 2026):** Tier 3 hardening complete — 3 new agents, 2 new git hooks, cross-browser/mobile Playwright projects, opt-in a11y, streaming-protocol testing, worktree integration, approval cadence, stale-spec detection, screenshot archival, trigger-phrase evals.
 **Author:** Sudipta Dhara — [github.com/sudipta26889](https://github.com/sudipta26889)
 **Repository:** [claude-plugin-develop-like-sudipta](https://github.com/sudipta26889/claude-plugin-develop-like-sudipta)
@@ -20,6 +21,8 @@ v3.4 expanded the CC-driver toolkit: GitHub Actions e2e workflow auto-emission, 
 
 v4.0 closes the remaining skill gaps from the 24-gap audit. Three new isolated-context agents (`audit-agent`, `bug-triage-agent`, `playwright-spec-reviewer`) handle audit summarization, bug intake, and spec QA. Two new git hooks (`check_bug_id.sh`, `check_test_paired_with_src.sh`) enforce bug-TDD discipline at commit time. Cross-browser/mobile Playwright projects (`assets/playwright.config.template.ts`) and opt-in `axe-playwright` a11y assertions widen real-browser coverage. WebSocket / SSE / HTTP-streaming testing patterns (`references/streaming_testing.md`) cover non-request-response surfaces. Worktree-aware orchestration (`references/worktree_integration.md`) keeps driver lock + WORKSPACE resolution sane across parallel feature branches. Approval cadence with `pause_at` config gives users explicit human checkpoints. Source-hash compare auto-detects stale per-phase specs and triggers regen. Old screenshots get archived and stale specs quarantined via `scripts/cleanup_test_artifacts.sh`. Trigger-phrase eval coverage for substrate / verify-gate / bug-TDD is now in `evals/`.
 
+v4.1 introduces Karpathy-style autoresearch — the plugin now self-improves its own skills overnight. Every shipped skill carries an `autoresearch/` subdirectory containing three files: `program.md` (the goal in plain English), `score.sh` (a deterministic metric — F1 on a trigger corpus, accuracy on a routing benchmark, etc.), and `target.txt` (the file under mutation, typically the skill's SKILL.md or a routing reference). The new `autoresearch` meta-skill drives a tight propose-score-commit loop: read program → propose ONE mutation to the target → score it → commit if better, reset if worse, then iterate. Four new slash commands operate the system: `/autoresearch <skill>` starts a run, `/autoresearch-status` shows accept rate and best score so far, `/autoresearch-resume` picks up an interrupted run, and `/autoresearch-baseline` re-runs the baseline scorer without mutating anything. Three skills ship with baselines today: `sd-claude-code-access` (F1 = 0.78 on trigger-phrase classification), `develop-like-sudipta` (accuracy = 47.91 on pillar-routing benchmark), `code-hacker` (F1 = 0.31 on attack-category classification). The baselines were intentionally chosen to leave substantial headroom — overnight loops have room to climb. Based on [karpathy/autoresearch](https://github.com/karpathy/autoresearch).
+
 ---
 
 ## Installed components
@@ -31,6 +34,7 @@ v4.0 closes the remaining skill gaps from the 24-gap audit. Three new isolated-c
 | `develop-like-sudipta` | Routing hub for the 11 pillars; loads references progressively and delegates to agents and superpowers. |
 | `code-hacker` | Red-team auditor — 23 attack categories, files a breach report. Invoked via `/hack`. |
 | `sd-claude-code-access` | Drives Claude Code from Cowork end-to-end: substrate detection, file-based directives, watchdog, resume, per-phase browser verification, Playwright emission. v3.3 adds: per-project danger-pattern extensions via `<workspace>/.cc/danger_patterns_extra.txt`; watchdog dryrun mode via `WATCHDOG_DRYRUN=1` (logs "would-deny" without blocking); commit-lag-aware audit retry (`--retry N --retry-interval SEC`); watchdog refusal escalation to `.cc/escalations.log` + optional `ESCALATE_CMD` hook; `state.json` salvage via `state_salvage.sh` (recover from corrupted JSONL). |
+| `autoresearch` | Karpathy-style self-improvement meta-skill. Reads any skill's `autoresearch/{program.md, score.sh, target.txt}` triple, proposes one mutation per iteration, scores it, commits if better. Drives the 4 `/autoresearch-*` commands. |
 
 ### Slash commands
 
@@ -53,6 +57,10 @@ v4.0 closes the remaining skill gaps from the 24-gap audit. Three new isolated-c
 | `/e2e-suite` | Stitch all per-phase tests into a project-wide Playwright suite. |
 | `/cc-audit` | Verify a driving session actually followed the discipline. |
 | `/reproduce-bug` | Bug-driven TDD: reproduce → red test → fix → green. |
+| `/autoresearch` | Run a Karpathy-style overnight loop on a wired skill: propose → score → commit-if-better. |
+| `/autoresearch-status` | Report accept rate, best score so far, biggest single jump for the active run. |
+| `/autoresearch-resume` | Resume an interrupted autoresearch run from the last `.baselines.json` entry. |
+| `/autoresearch-baseline` | Re-run the baseline scorer for a skill without proposing any mutation. |
 
 ### Agents
 
@@ -175,6 +183,12 @@ The plugin layers three things on top of Claude Code: (a) skills that load progr
   - `feat(devserver)` — dev-server orchestration with `wait_for_dev_server.sh`, auto-start when down, port-probe with backoff (gap #10).
   - `feat(api)` — API-level testing reference for backend-only phases — pytest + requests/httpx pattern when no UI exists yet (gap #16).
   - `feat(ssh)` — SSH / remote-Mac substrate (Path D) — drive a headless Mac mini from Cowork via SSH + tmux; probe via `ssh_probe.sh` (gap #16).
+- **4.1.0** — Karpathy autoresearch (2026-05-11)
+  - New skill: `autoresearch` (3-file architecture mapping — program.md + score.sh + target.txt).
+  - Per-skill wiring: `sd-claude-code-access`, `develop-like-sudipta`, `code-hacker` each ship `autoresearch/{program.md, score.sh, target.txt, trigger_corpus.json, .baselines.json}`.
+  - 4 new commands: `/autoresearch`, `/autoresearch-status`, `/autoresearch-resume`, `/autoresearch-baseline`.
+  - Baselines established (F1 0.78 / acc 47.91 / F1 0.31).
+  - Based on https://github.com/karpathy/autoresearch.
 - **4.0.0** (2026-05-11) — Tier 3 final hardening (10 gaps closed; 24-gap audit complete):
   - `feat(cleanup)` — `scripts/cleanup_test_artifacts.sh`: archive screenshots older than N days, quarantine stale specs whose source markdown no longer exists (gap #12).
   - `feat(crossbrowser)` — `assets/playwright.config.template.ts` ships `chromium / firefox / webkit / Mobile Safari / Mobile Chrome` projects out of the box (gap #13).

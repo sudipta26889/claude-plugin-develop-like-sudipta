@@ -1,6 +1,6 @@
 # Claude Code driver — drop-in prompts for Cowork
 
-After installing the `develop-like-sudipta` plugin v4.0.0, paste the variant that matches your scenario into a fresh Cowork chat. The `sd-claude-code-access` skill is bundled inside the plugin and triggers on the keywords below.
+After installing the `develop-like-sudipta` plugin v4.1.0+, paste the variant that matches your scenario into a fresh Cowork chat. The `sd-claude-code-access` skill is bundled inside the plugin and triggers on the keywords below.
 
 ---
 
@@ -237,6 +237,39 @@ Shortcut: `/e2e-suite <workspace-path>` once the plugin is installed.
 
 ---
 
+## 🅷 Run autoresearch overnight on a skill (Karpathy loop)
+
+```markdown
+I want you to run Karpathy-style autoresearch on the <skill-name> skill in
+my plugin. Use the `autoresearch` skill (bundled in develop-like-sudipta).
+
+**Before driving anything:** probe substrate per
+`references/substrate_and_access.md` (Path A preferred via Desktop_Commander).
+Tell me which path was chosen.
+
+**Procedure:**
+1. Read the autoresearch skill's SKILL.md and references/loop_mechanics.md.
+2. Verify the target skill has autoresearch wiring:
+   <plugin>/skills/<skill-name>/autoresearch/{program.md, score.sh, target.txt}
+3. Run a baseline: bash <plugin>/skills/autoresearch/scripts/run_autoresearch.sh
+   <plugin>/skills/<skill-name> --once
+4. Confirm baseline score with me before proceeding to the full loop.
+5. Run the full loop: --budget 50 --time 300 (default; override if I specify).
+6. Per iteration: read program.md + target + recent .baselines.json,
+   propose ONE mutation to the target file, write it, the driver scores +
+   commits/resets. Pause every 10 experiments OR when a new best score lands.
+7. Report: starting score, ending score, accept rate, biggest single jump,
+   the diff for the best-scoring change.
+
+**Skill to optimize:** <sd-claude-code-access | develop-like-sudipta | code-hacker>
+**Budget:** 50 experiments (override: --budget N)
+**Time per experiment:** 300 sec (override: --time SEC)
+```
+
+Shortcut: `/autoresearch <skill-name>` once the plugin is installed.
+
+---
+
 ## Knobs to tweak per use
 
 | Variable | Default | When to override |
@@ -263,4 +296,4 @@ Shortcut: `/e2e-suite <workspace-path>` once the plugin is installed.
 
 ---
 
-**All 6 variants now require substrate detection as Step 0.** If Cowork's tool list doesn't show `Desktop_Commander` or `computer-use`, expect Path C (manual) or Path D (SSH/remote-Mac if SSH is reachable) — Cowork will surface commands for you to run manually or pipe them through tmux over SSH. See the skill's `references/substrate_and_access.md` for the full probing protocol and the per-path capability matrix.
+**All 7 variants now require substrate detection as Step 0.** If Cowork's tool list doesn't show `Desktop_Commander` or `computer-use`, expect Path C (manual) or Path D (SSH/remote-Mac if SSH is reachable) — Cowork will surface commands for you to run manually or pipe them through tmux over SSH. See the skill's `references/substrate_and_access.md` for the full probing protocol and the per-path capability matrix.
