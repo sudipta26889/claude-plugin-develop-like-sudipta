@@ -1,6 +1,18 @@
 # Claude Code driver — drop-in prompts for Cowork
 
-After installing the `develop-like-sudipta` plugin v3.0.0+, paste the variant that matches your scenario into a fresh Cowork chat. The `sd-claude-code-access` skill is bundled inside the plugin and triggers on the keywords below.
+After installing the `develop-like-sudipta` plugin v3.2.0+, paste the variant that matches your scenario into a fresh Cowork chat. The `sd-claude-code-access` skill is bundled inside the plugin and triggers on the keywords below.
+
+---
+
+## How Cowork actually reaches your Mac
+
+Cowork doesn't have a direct shell into your Mac — it has to pick a substrate from the MCPs available in the current session. Starting in v3.2 every variant below begins with a substrate probe (Step 0) and reports which path was chosen and why before running anything. There are three paths:
+
+- **Path A — `Desktop_Commander` (preferred).** If `mcp__Desktop_Commander__*` tools are present in the session, Cowork executes commands directly on your Mac through that MCP. Fastest and most reliable; no app permissions needed.
+- **Path B — `computer-use` (fallback).** If `mcp__computer-use__*` is present but `Desktop_Commander` is not, Cowork calls `request_access` for `Terminal` (or `iTerm2`) at tier `click` — enough to bring the app forward and click, but not to type. Typing happens via the SDK's keyboard relay paths described in the skill. Slower, requires per-app approval.
+- **Path C — manual (last resort).** Neither MCP available: Cowork surfaces each command for you to paste into your Terminal. No autonomous execution, but the discipline still applies — directives, watchdog plan, audit, and browser-test commands are still written for you.
+
+Full detail on probing, fallbacks, and what each path can and cannot do lives in the skill's `references/substrate_and_access.md`.
 
 ---
 
@@ -9,6 +21,14 @@ After installing the `develop-like-sudipta` plugin v3.0.0+, paste the variant th
 ```markdown
 I want you to drive Claude Code (CC) end-to-end for a new project. Use the
 `sd-claude-code-access` skill (bundled in the develop-like-sudipta plugin).
+
+**Before driving anything:** probe substrate per the skill's
+`references/substrate_and_access.md`:
+- mcp__Desktop_Commander__* present? → Path A (preferred — direct on-Mac exec)
+- mcp__computer-use__* present? → Path B (fallback — request_access for Terminal at tier "click")
+- Neither? → Path C (manual — surface commands to user)
+
+Tell me which path was chosen and WHY before running anything on my Mac.
 
 **Workspace:** /absolute/path/to/my/new/project
 **CC location:** running in macOS Terminal.app, single window, single tab
@@ -56,6 +76,14 @@ Claude Code is already running in my Terminal at `/absolute/path/to/workspace`.
 I've been driving it manually; take over and continue. Use the
 `sd-claude-code-access` skill (bundled in develop-like-sudipta plugin).
 
+**Before driving anything:** probe substrate per the skill's
+`references/substrate_and_access.md`:
+- mcp__Desktop_Commander__* present? → Path A (preferred — direct on-Mac exec)
+- mcp__computer-use__* present? → Path B (fallback — request_access for Terminal at tier "click")
+- Neither? → Path C (manual — surface commands to user)
+
+Tell me which path was chosen and WHY before running anything on my Mac.
+
 **Where we are:**
 - Last completed phase: <N>  (e.g., "Phase 5 — Slack-status awareness")
 - Current state: <CC is paused at checkpoint / mid-task / awaiting next phase>
@@ -86,6 +114,14 @@ A previous Cowork session was driving Claude Code at /absolute/path/to/workspace
 and died. Pick up the run. Use the `sd-claude-code-access` skill (bundled in
 develop-like-sudipta plugin).
 
+**Before driving anything:** probe substrate per the skill's
+`references/substrate_and_access.md`:
+- mcp__Desktop_Commander__* present? → Path A (preferred — direct on-Mac exec)
+- mcp__computer-use__* present? → Path B (fallback — request_access for Terminal at tier "click")
+- Neither? → Path C (manual — surface commands to user)
+
+Tell me which path was chosen and WHY before running anything on my Mac.
+
 **Resume protocol:**
 1. Read the skill's SKILL.md and `references/state_and_resume.md`
 2. Run `bash ~/.cache/ccbridge/diagnose.sh <workspace>`
@@ -113,6 +149,14 @@ Shortcut: `/cc-resume <workspace-path>` once the plugin is installed.
 Send this message to my running Claude Code session. Use the
 `sd-claude-code-access` skill (specifically `send.sh` and `read.sh`).
 
+**Before driving anything:** probe substrate per the skill's
+`references/substrate_and_access.md`:
+- mcp__Desktop_Commander__* present? → Path A (preferred — direct on-Mac exec)
+- mcp__computer-use__* present? → Path B (fallback — request_access for Terminal at tier "click")
+- Neither? → Path C (manual — surface commands to user)
+
+Tell me which path was chosen and WHY before running anything on my Mac.
+
 **Message:**
 <paste exact text — short messages inline; for long markdown write to
 /path/to/workspace/.cc/oneshot.md and say "send 'Read .cc/oneshot.md and
@@ -135,6 +179,14 @@ Run /browser-test for phase <N> at /absolute/path/to/workspace. Use the
 `sd-claude-code-access` skill (references/browser_testing.md +
 references/playwright_generation.md).
 
+**Before driving anything:** probe substrate per the skill's
+`references/substrate_and_access.md`:
+- mcp__Desktop_Commander__* present? → Path A (preferred — direct on-Mac exec)
+- mcp__computer-use__* present? → Path B (fallback — request_access for Terminal at tier "click")
+- Neither? → Path C (manual — surface commands to user)
+
+Tell me which path was chosen and WHY before running anything on my Mac.
+
 Fire Claude in Chrome, verify the feature against the dev server, write
 `docs/e2e-testing/phase-<N>-<slug>.md` with structured evidence
 (Test ID, objective, preconditions, steps, expected results, screenshots,
@@ -154,6 +206,14 @@ Shortcut: `/browser-test <workspace> <phase-number>` once the plugin is installe
 ```markdown
 Run /e2e-suite at /absolute/path/to/workspace. Use the `sd-claude-code-access`
 skill (references/browser_testing.md end-of-run E2E suite section).
+
+**Before driving anything:** probe substrate per the skill's
+`references/substrate_and_access.md`:
+- mcp__Desktop_Commander__* present? → Path A (preferred — direct on-Mac exec)
+- mcp__computer-use__* present? → Path B (fallback — request_access for Terminal at tier "click")
+- Neither? → Path C (manual — surface commands to user)
+
+Tell me which path was chosen and WHY before running anything on my Mac.
 
 Stitch every `docs/e2e-testing/phase-*.md` into
 `docs/e2e-testing/E2E-SUITE.md` (with a coverage table). Emit
@@ -192,3 +252,7 @@ Shortcut: `/e2e-suite <workspace-path>` once the plugin is installed.
 - **Don't open two Cowork chats driving the same workspace.** The driver lock blocks it, but only if `WORKSPACE` is set.
 - **Don't advance a phase on a red browser test.** Write the fix directive, re-trigger CC, re-test.
 - **At session end, run `run_summary.sh` + `/e2e-suite`** — captures both the driving session record and the project-wide test umbrella.
+
+---
+
+**All 6 variants now require substrate detection as Step 0.** If Cowork's tool list doesn't show `Desktop_Commander` or `computer-use`, expect Path C — Cowork will surface commands for you to run manually. See the skill's `references/substrate_and_access.md` for the full probing protocol and the per-path capability matrix.
