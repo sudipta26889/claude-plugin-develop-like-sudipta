@@ -10,7 +10,7 @@ A **Claude Code plugin marketplace** that ships one plugin: `develop-like-sudipt
 
 - `.claude-plugin/marketplace.json` — marketplace entry point. Points at the single plugin in `develop-like-sudipta/`.
 - `develop-like-sudipta/` — the plugin itself. Everything Claude Code loads at install time lives under here.
-  - `.claude-plugin/plugin.json` — plugin manifest. **The `version` field here is the source of truth** (currently `5.0.1`; bump on every release). The `description` is intentionally a long changelog — older versions live there.
+  - `.claude-plugin/plugin.json` — plugin manifest. **The `version` field here is the source of truth** (currently `5.0.3`; bump on every release). The `description` is intentionally a long changelog — older versions live there.
   - `agents/*.md` — 9 isolated-context subagents (`test-writer`, `implementer`, `code-reviewer`, `security-reviewer`, `dep-researcher`, `env-sync-checker`, `audit-agent`, `bug-triage-agent`, `playwright-spec-reviewer`).
   - `commands/*.md` — 23 slash commands (`/plan`, `/implement`, `/audit`, `/secure`, `/hack`, `/review`, `/deploy`, `/fix`, `/refactor`, `/research-deps`, `/cc-drive`, `/cc-resume`, `/cc-send`, `/browser-test`, `/e2e-suite`, `/cc-audit`, `/reproduce-bug`, `/ccbridge-init`, `/ccbridge-status`, plus the 4 `/autoresearch-*`).
   - `hooks/` — `hooks.json` plus 4 `.sh` scripts (`tdd-gate`, `post-edit-check`, `completion-gate`, `state-saver`) + `scripts/` with the 2 opt-in git pre-commit hooks. `setup.sh` wires everything into `~/.claude/settings.json`.
