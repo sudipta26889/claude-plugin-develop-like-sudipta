@@ -37,13 +37,17 @@
 # show a session-picker menu OR open a fresh session — depends on CC version.
 # Recommend CC_LAUNCH_FLAGS="--chrome" (drop --continue) for brand-new workspaces.
 #
-# v5.0 — --auto is part of the L1 reviewer layer (see references/active_watcher.md
-# and docs/plans/research-continuous-cowork-2026-05-12.md). Anthropic's April 2026
-# GA flag routes every tool call through a Sonnet 4.6 server-side classifier that
-# blocks dangerous actions per call (scope escalation, untrusted infra, prompt
-# injection). Requires claude 2.1.138+; older versions silently ignore the flag
-# (graceful degradation). Override via CC_LAUNCH_FLAGS env or <ws>/.cc/config.json
-# → cc_launch_flags. Drop --auto for users who haven't opted into the new model.
+# v5.0.2 BUG-3 fix — the prior v5.0.0 default `--auto` was bogus: claude 2.1.139
+# rejects it with "error: unknown option '--auto'". The actual flag for server-
+# side per-tool-call review is `--permission-mode auto` (a choice on the
+# pre-existing --permission-mode option, alongside acceptEdits / bypassPermissions
+# / default / dontAsk / plan). The v5.0.0 research report that named `--auto`
+# was inaccurate; this script now probes `claude --help` at launch and:
+#   - includes `--permission-mode auto` if --permission-mode is supported AND
+#     `auto` is one of its choices (the L1 layer engages).
+#   - drops the flag entirely if not (graceful degradation; watchdog L0 still
+#     refuses danger patterns, the manager handles routine prompts).
+# Override via CC_LAUNCH_FLAGS env or <ws>/.cc/config.json → cc_launch_flags.
 
 set -euo pipefail
 
@@ -62,7 +66,23 @@ set -- "${ARGS[@]:-}"
 WS="${1:?usage: launch_cc.sh <workspace> [--detect-only]}"
 WS_ABS=$(cd "$WS" 2>/dev/null && pwd -P) || { echo "[launch_cc] ERROR: not a directory: $WS" >&2; exit 1; }
 
-CC_LAUNCH_FLAGS="${CC_LAUNCH_FLAGS:---continue --chrome --auto}"
+# BUG-3 fix: probe `claude --help` for --permission-mode + auto choice. If
+# supported → include `--permission-mode auto` (the real L1 form). If not →
+# drop to legacy `--continue --chrome`. Either way, the bogus `--auto` is
+# never emitted again.
+_l1_flags() {
+  command -v claude >/dev/null 2>&1 || { echo ""; return; }
+  local help; help=$(claude --help 2>&1)
+  if echo "$help" | grep -qE '[[:space:]]--permission-mode[[:space:]]' \
+     && echo "$help" | grep -qE '"auto"'; then
+    echo "--permission-mode auto"
+  else
+    echo ""
+  fi
+}
+CC_LAUNCH_FLAGS="${CC_LAUNCH_FLAGS:---continue --chrome $(_l1_flags)}"
+# Trim any trailing whitespace from empty _l1_flags expansion.
+CC_LAUNCH_FLAGS="$(echo "$CC_LAUNCH_FLAGS" | sed -E 's/[[:space:]]+$//')"
 TERMINAL_APP="${TERMINAL_APP:-Terminal}"
 LAUNCH_TIMEOUT_S="${LAUNCH_TIMEOUT_S:-30}"
 
