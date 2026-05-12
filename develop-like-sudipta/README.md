@@ -191,49 +191,27 @@ The plugin layers three things on top of Claude Code: (a) skills that load progr
 
 ## Versioning
 
-- **5.0.0** (2026-05-12) — Continuous-loop architecture. Three layers (L1 `--auto` per-call reviewer in `launch_cc.sh` defaults; L2 `cc-orchestrator` scheduled task at `* * * * *` doing per-minute reasoning over `<ws>/.cc/active-job.json`; L3 `cc-coordinator-keepalive` at `*/5 * * * *` doing stall escalation + self-disable on done) backed by `docs/plans/research-continuous-cowork-2026-05-12.md`. Cross-machine learnings sync via `scripts/sync_learnings.sh` (rsync-over-SSH) + `ccbridge-sync-learnings` scheduled task (`0 */6 * * *`); aggregator walks `learnings/remote-*/*.jsonl` with `source_host` tags; distillation gains `cross-machine?` dimension. Watchdog default flipped to safety-net-only (`WATCHDOG_AUTO_APPROVE=0`) — the manager (Cowork or human) decides every non-danger prompt deliberately via the `prompt_pending` event stream; legacy auto-approve is opt-in for unattended scheduled-task runs. New `## Modes` section in the skill (A greenfield / B SRE monitor / C hotfix). New references: `references/active_watcher.md`, `references/multi_machine.md`. Stop conditions enforced (`max_cycles`, `max_duration_hours`, `<ws>/.cc/monitor.stop`, cooldown after 3 failed fix attempts, `cycle_timeout_s` wall-clock cap). Six bundled scheduled tasks total; `/ccbridge-init` registers/refreshes all six idempotently. BUG-1 (`launch_cc.sh` regex missed bare-name `claude` argv[0]) fixed via bug-driven TDD; eval hardened to run in non-interactive runners. H4/D2/D3/D4/D5 doc + tooling gaps closed. 35+ commits across 7 plan phases.
-- **2.x** — 11 pillars enforced via the original `develop-like-sudipta` skill, plus `code-hacker` for red-team audits. Agents, hooks, and the first 8 slash commands established.
-- **3.0** — bundled `sd-claude-code-access` skill: end-to-end Claude Code driving from Cowork. Added `/cc-drive`, `/cc-resume`, `/cc-send`, `/browser-test`, `/e2e-suite`, `/cc-audit`. Per-phase real-browser verification via Claude in Chrome MCP, Playwright spec emission into `docs/e2e-testing/`.
-- **3.1** — verify gate (static checks + unit/integration tests via auto-detected runner) MUST be green before browser-test. Bug-driven TDD protocol made mandatory — no fix without a failing test pair first. Added `/reproduce-bug` and `/fix`.
-- **3.2** — substrate detection. Every CC-driving session probes available MCPs and selects Path A (`Desktop_Commander`, preferred), Path B (`computer-use`, `request_access` for Terminal at tier `click`), or Path C (manual command surfacing). The chosen path and reason are reported before anything runs.
-- **3.3.0** (2026-05-11) — Tier 1 hardening (4 user-visible gaps + 2 doc gaps closed):
-  - `feat(safety)` — danger-pattern audit + per-project extensions (`<workspace>/.cc/danger_patterns_extra.txt`) + dryrun mode (`WATCHDOG_DRYRUN=1`) (gap #1).
-  - `fix(audit)` — commit-lag-aware retry with `--retry`/`--retry-interval` flags so `audit.sh` no longer flags drift on healthy phases mid commit-hook (gap #2).
-  - `feat(safety)` — watchdog escalation on refused prompts: appends to `.cc/escalations.log` and fires optional `ESCALATE_CMD` hook (gap #3).
-  - `feat(state)` — `state.json` salvage script for corrupted JSONL recovery (`state_salvage.sh`) (gap #4).
-  - `docs(readme + prompts)` — README refreshed for v3.2/v3.3; CC-driver prompt drop-ins now lead with the Path A/B/C substrate detection clause (gaps #23 + #24).
-- **3.4.0** (2026-05-11) — Tier 2 CC-driver expansion (8 gaps closed):
-  - `feat(ci)` — GitHub Actions e2e workflow auto-emission so CI runs the same Playwright suite the per-phase driver runs (gap #5).
-  - `feat(parse)` — structured test-output parser across pytest / jest / vitest / cargo / go-test / maven; driver reads pass/fail counts and per-test names instead of substring sniffing (gap #6).
-  - `feat(testids)` — `data-testid` directive enforcement: per-phase directives explicitly require stable selectors and the spec emitter refuses to write XPath/index-based assertions (gap #7).
-  - `feat(auth)` — auth-state lifecycle: `check_auth_state.sh` validates storageState freshness before browser-test runs, auto-refreshes when stale (gap #8).
-  - `feat(flake)` — flake retry + whitelist with documented decision tree; retries are bounded and recorded, whitelist entries require a comment (gap #9).
-  - `feat(devserver)` — dev-server orchestration with `wait_for_dev_server.sh`, auto-start when down, port-probe with backoff (gap #10).
-  - `feat(api)` — API-level testing reference for backend-only phases — pytest + requests/httpx pattern when no UI exists yet (gap #16).
-  - `feat(ssh)` — SSH / remote-Mac substrate (Path D) — drive a headless Mac mini from Cowork via SSH + tmux; probe via `ssh_probe.sh` (gap #16).
-- **4.8.0** (2026-05-12) — F-AUTOPR: distill → CC writes fix → draft PR.
-  - New scheduled task `ccbridge-propose-fix-pr` (cron `0 9 * * 1`): walks `priors-*.md` from the latest distill, routes each cross-project signature through a dispatch table to the matching plugin file, spawns CC against the plugin repo clone, drives bug-driven TDD, opens a *draft* PR via `gh pr create --draft`. Maintainer reviews/merges — never auto-merge.
-  - New `scripts/dispatch_signature.sh` — bash 3.2 case-statement dispatch (testable in isolation; 13 signature prefixes covered).
-  - New `scripts/propose_fix_pr.sh` — procedure runner with `DRY_RUN=1` (no side effects), `PR_CAP=3` cap (overflow → one batched GH issue), `GH_OVERRIDE=mock` for evals. Installed to `~/.cache/ccbridge/` by `install.sh`.
-  - New evals: `test_propose_fix_pr_{dispatch,dryrun,cap}.sh` — 3 red → 3 green before commit.
-  - `/ccbridge-init` and `/ccbridge-status` updated to register/report on the third scheduled task.
-- **4.1.0** — Karpathy autoresearch (2026-05-11)
-  - New skill: `autoresearch` (3-file architecture mapping — program.md + score.sh + target.txt).
-  - Per-skill wiring: `sd-claude-code-access`, `develop-like-sudipta`, `code-hacker` each ship `autoresearch/{program.md, score.sh, target.txt, trigger_corpus.json, .baselines.json}`.
-  - 4 new commands: `/autoresearch`, `/autoresearch-status`, `/autoresearch-resume`, `/autoresearch-baseline`.
-  - Baselines established (F1 0.78 / acc 47.91 / F1 0.31).
-  - Based on https://github.com/karpathy/autoresearch.
-- **4.0.0** (2026-05-11) — Tier 3 final hardening (10 gaps closed; 24-gap audit complete):
-  - `feat(cleanup)` — `scripts/cleanup_test_artifacts.sh`: archive screenshots older than N days, quarantine stale specs whose source markdown no longer exists (gap #12).
-  - `feat(crossbrowser)` — `assets/playwright.config.template.ts` ships `chromium / firefox / webkit / Mobile Safari / Mobile Chrome` projects out of the box (gap #13).
-  - `feat(a11y)` — opt-in `axe-playwright` a11y assertions gated by `.cc/config.json → axe_enabled: true`; spec template uses `A11Y BEGIN/END` markers so disabled mode emits clean output (gap #14).
-  - `feat(streaming)` — `references/streaming_testing.md` documents WebSocket / SSE / HTTP-chunked testing patterns and assertion strategies (gap #15).
-  - `feat(agents)` — three new isolated-context agents: `audit-agent`, `bug-triage-agent`, `playwright-spec-reviewer` (gap #17).
-  - `feat(hooks)` — two new git pre-commit hooks: `check_bug_id.sh` (enforces `Bug:` trailer + failing-test commit on `/fix/*` branches), `check_test_paired_with_src.sh` (no production code without paired test change) (gap #18).
-  - `feat(worktree)` — `references/worktree_integration.md` documents driving CC inside a git worktree: WORKSPACE resolution, driver lock per-worktree, multi-worktree parallelism, merge-time test bank handling (gap #19).
-  - `feat(cadence)` — approval cadence with `pause_at` config: explicit human checkpoints after planning, after phase verify, before commit, before push (gap #20).
-  - `feat(specs)` — automated stale-spec detection: source-hash compare between `## Steps` content in `phase-N.md` and the `// source-hash:` header in `phase-N.spec.ts`; triggers regen on drift (gap #21).
-  - `feat(evals)` — trigger-phrase coverage for substrate detection, verify-gate enforcement, and bug-TDD onset in `evals/*.json` (gap #22).
+Newest first. One line per release, sourced from the accreting changelog in `develop-like-sudipta/.claude-plugin/plugin.json` `description`.
+
+v5.0.1 (May 2026): BUG-2 — watchdog's `trap … TERM` handler now exits the poll loop cleanly on SIGTERM/SIGINT (silently re-entered the loop before).
+v5.0.0 (May 2026): Continuous-loop architecture — L1 `--auto`, L2 `cc-orchestrator` (every minute), L3 `cc-coordinator-keepalive` (every 5 min) + cross-machine learnings sync via `sync_learnings.sh` + `ccbridge-sync-learnings` (6h). Safety-net-only watchdog default, Modes A/B/C, six bundled scheduled tasks.
+v4.8.0 (May 2026): F-AUTOPR — `ccbridge-propose-fix-pr` scheduled task (Mondays 09:00) routes cross-project signatures through a dispatch table, drives bug-driven TDD on a plugin clone, opens a draft PR. Capped at 3/week.
+v4.7.0 (May 2026): First objective watchdog-prompt classification eval (20 hand-labeled rows). Baseline 0.85 → 1.0 after closing the C6 verb list + ❯-menu form + cloud-storage recursive-delete patterns.
+v4.6.2 (May 2026): Swarm-vs-Compose `pull_policy: always` gap documented — Compose honors the field, Swarm silently drops it. Per-orchestrator recovery routes added to `references/cicd-deployment.md`.
+v4.6.1 (May 2026): Portainer-native deploy policy — `/deploy` step 6 bans manual `gh auth | ssh docker login + docker pull`; three Portainer-native recovery routes documented; `pull_policy: always` per service.
+v4.6.0 (May 2026): Polish wave + continuous-drive mode. H1 second-CC-opens-new-window, H2 `learning.sh` stderr confirms + validation, F2 `launch_cc.sh --dry-run`, F3 `state.sh tail`, F4 `check_no_hardcoded_paths.sh` pre-commit, F5 stdin body on `learning.sh`, user-direct-input detection.
+v4.5.1 (May 2026): Three critical fixes from M1 Max field testing — C2 `is_terminal_cc` excludes Cursor IDE-agent + no-TTY processes, C3 `send.sh` verify-by-fragment goes ASCII-only, C4 `diagnose.sh` wraps every inner `osascript` in `|| echo "?"`.
+v4.5.0 (May 2026): `/ccbridge-status` — at-a-glance health-check: bridge install, watchdog process, 7-day event counts, latest distillation + cross-project signature count, best autoresearch score per skill, one-word HEALTH verdict.
+v4.4.0 (May 2026): `launch_cc.sh` auto-launch — detect-or-spawn a terminal-mode CC for a specific workspace; cwd matching via `lsof`; `--detect-only` mode (exit 4 if no match); wired into `start_watchdog.sh` self-bootstrap.
+v4.3.4 (May 2026): Two real second-Mac rollout bugs — `setup_ccbridge.sh` now captures `install.sh` stdout to a tmpfile (SIGPIPE-safe under `set -euo pipefail`) and self-`git pull`s + self-re-execs before installing.
+v4.3.3 (May 2026): Portable scheduled-task paths — `install.sh` copies `aggregate_learnings.sh` + `distill_learnings.sh` into `~/.cache/ccbridge/`; bundled SKILLs reference those stable per-machine paths, not plugin-relative ones.
+v4.3.2 (May 2026): Three-layer `WORKSPACE` resolution in `start_watchdog.sh` — honor env, else auto-detect from running `claude` cwd via `lsof`, else fail-fast loudly. Closes the silent-learning-loss foot-gun.
+v4.3.1 (May 2026): `/ccbridge-init` — one idempotent slash command per machine that runs `setup_ccbridge.sh` then registers/refreshes Cowork scheduled tasks (preserves user-customized crons).
+v4.3.0 (May 2026): Runtime-learning closed loop — workspaces auto-register via `register_project.sh`; `learning.sh` dual-writes to `<ws>/.cc/learnings.jsonl` + central tail; nightly aggregator + weekly distill-and-propose.
+v4.2.1 (May 2026): Closed the autoresearch loop's last gap — `run_autoresearch.sh` now actually calls `propose_hypothesis.sh` per iteration (was a stub in v4.1).
+v4.2.0 (May 2026): Autoresearch backlog close-out — real proposer (file + API), opt-in LLM scoring via Haiku-4.5 + cost guard, per-skill scorers normalized to F1 in [0,1], distributed-swarm scaffolding.
+v4.1.0 (May 2026): Karpathy-style autoresearch meta-skill + 4 `/autoresearch-*` commands. Each skill ships `autoresearch/{program.md, score.sh, target.txt, .baselines.json}`.
+v4.0.0 (May 2026): Tier 3 hardening — 3 new agents (audit/bug-triage/playwright-spec-reviewer), 2 git pre-commit hooks, cross-browser Playwright projects, opt-in axe a11y, streaming patterns, worktree integration, `pause_at`, source-hash spec drift.
 
 ---
 
