@@ -414,25 +414,103 @@ Recovery procedures live in [`references/failure_modes.md`](references/failure_m
 | Cross-machine setup | See [`references/ssh_variant.md`](references/ssh_variant.md) |
 | iTerm2 instead of Terminal.app | `export TERMINAL_APP=iTerm2`; see [`references/iterm2.md`](references/iterm2.md) |
 
-## Driving long autonomous runs
+## Continuous-manager doctrine (v5.0.3 — the no-sleep contract)
 
-For runs > 30 min where the user is away:
+> **The single most important rule when an active job exists.** Encoded from
+> the v5.0.2 stability run where the prior "poll every 2-5 min" guidance
+> caused the manager to end its turn between checks, leaving CC stalled in
+> 30-minute windows the user named "everyone slept".
 
-1. **Pre-write all phase directives upfront.** Saves context budget — per-phase trigger is 1-line.
-2. **Poll at 60–180s intervals**, not 15s. Watchdog handles routine approvals.
-3. **Use `git log --oneline -1` as a cheap progress probe.**
-4. **Generate a STATUS.md update per phase.**
-5. **Document blockers explicitly.**
-6. **Use subagents for parallel audit/poll/draft** if available — see [`references/subagent_patterns.md`](references/subagent_patterns.md).
-7. **Run `state.sh` for every phase boundary** so resume-after-crash works.
-8. **Generate `run_summary.sh` at session end.**
+### The no-sleep contract
+
+Once you write `<workspace>/.cc/active-job.json` and send the Phase 1 trigger,
+you (Cowork manager) **never end your turn while that active job exists**.
+You sustain a single-turn polling loop until ONE of these end-of-turn
+conditions fires:
+
+1. `state.sh job_complete` event lands in `<workspace>/.cc/state.json`.
+2. `done_criteria` from `active-job.json` is satisfied (every evidence path
+   exists, commit message pattern matched, phase count reached).
+3. `<workspace>/.cc/monitor.stop` file appears (user manual kill switch).
+4. The user EXPLICITLY tells you to stop in plain language.
+5. **3 consecutive failed unblock attempts** on the same prompt fingerprint
+   — genuine escalation, surface to user with `BLOCKED:` summary.
+
+Outside those five conditions, returning to the user after a status check
+is the anti-pattern. The cc-orchestrator scheduled task fires once per
+minute, but its fire-gap creates ≥60s windows where nothing is watching;
+the manager covers those windows by staying in the turn.
+
+### Sustaining the loop — per-cycle actions
+
+Within the single turn, on each ~30-60s polling cycle do:
+
+1. **Read CC buffer** via `~/.cache/ccbridge/read.sh`. Scan for:
+   - A `❯ N. <text>` line → CC is paused at a permission prompt.
+   - A "Thundering/Bloviating/Brewing" thinking spinner → CC is working;
+     no-op this cycle.
+   - An empty buffer → CC between operations OR finished a phase silently.
+     Check `git log` to confirm progress.
+2. **If prompt detected** → invoke `~/.cache/ccbridge/unblock_cc.sh` directly.
+   Don't wait for the orchestrator's next fire (up to 60s of latency).
+   The script handles detect → danger-check → parse cursor → navigate → return.
+3. **Check `git log --oneline <job-start-sha>..HEAD`** for new commits.
+   Each Conventional Commits prefix maps to a phase task; advance your
+   internal model.
+4. **Read `<workspace>/.cc/state.json` tail** for the latest events.
+   Look for `phase_complete N` → if you see one and `phase-(N+1).md` exists,
+   send the phase trigger manually via `send.sh` rather than waiting for
+   the orchestrator. Manual phase trigger is acceptable when faster.
+5. **Sleep 30-60s** then repeat.
+
+### Parallel work the manager handles inside the turn
+
+While CC works on phase tasks, the manager can do these as parallel threads
+WITHOUT pausing CC (unless the fix changes something CC depends on):
+
+- **Bug-driven TDD fixes** to plugin scripts/SKILLs when bugs surface during
+  the run. Write the RED eval first, fix, GREEN, commit. See the v5.0.2 run
+  where BUG-3 (launch_cc.sh --auto), BUG-4 (cursor-aware unblock), and
+  BUG-5/6 (bounded logging) were fixed mid-run.
+- **Audit checkpoints** — every phase boundary, run `audit.sh` to verify
+  what was directed vs what got committed.
+- **Live SKILL refresh** — when fixing scheduled-task logic, update three
+  places: `assets/scheduled-tasks/<task>/SKILL.md` (source of truth) →
+  `~/Documents/Claude/Scheduled/<task>/SKILL.md` (live copy) →
+  `mcp__scheduled-tasks__update_scheduled_task` (live cron prompt). All
+  three refreshed in one batch.
+
+### Setup checklist for a long run
+
+Before kicking off the loop:
+
+1. **Pre-write all phase directives** to `<workspace>/.cc/phase-N.md`.
+   Each one self-contained per `assets/directive_template.md`.
+2. **Write `<workspace>/.cc/active-job.json`** with: phases array,
+   `done_criteria`, `max_duration_hours`, `max_cycles`, `stop_conditions`.
+3. **Start watchdog** (`start_watchdog.sh`) with `WORKSPACE` set.
+4. **Re-enable `cc-orchestrator` + `cc-coordinator-keepalive`** scheduled
+   tasks via `mcp__scheduled-tasks__update_scheduled_task enabled=true`.
+   They're the L2/L3 safety net for windows when the manager genuinely
+   crashes (Cowork session restart, etc.).
+5. **Send Phase 1 trigger** via `send.sh`. Then enter the polling loop and
+   don't leave it.
 
 Full playbook: [`references/managing_long_runs.md`](references/managing_long_runs.md).
 
 ## Anti-patterns
 
+- **Don't end the turn while an active job exists.** This is the v5.0.3
+  no-sleep contract — the single most important manager rule. Returning to
+  the user after each status check guarantees CC stalls in the fire-gap
+  windows. End-of-turn conditions are enumerated in the Continuous-manager
+  doctrine section above; "I just checked once" is not one of them.
+- **Don't return to user while CC is actively working on a phase.** Same
+  contract, restated. If you find yourself about to type a status summary
+  in chat without a hard escalation, you're about to break the contract.
 - **Don't ad-hoc paste long markdown.** File-based for >3 sentences.
-- **Don't poll every 15s during long phases.** 2-5 min is the floor.
+- **Don't poll every 15s during long phases.** 30-60s is the floor — fast
+  enough to cover orchestrator fire-gaps, slow enough not to thrash.
 - **Don't skip diffs because the checkpoint summary "looked good".** Summaries describe intent; diffs describe reality.
 - **Don't disable the watchdog "for safety".** Use the danger deny-list instead.
 - **Don't run the watchdog without `WORKSPACE` set** if you want resume-after-crash. State events get dropped.

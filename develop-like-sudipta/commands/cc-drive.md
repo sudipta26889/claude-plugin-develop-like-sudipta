@@ -46,15 +46,34 @@ Drive a Claude Code (CC) terminal session at `$1` from start to finish.
 - Use subagents for parallel audit / polling / directive-drafting where it saves context.
 - Write to `$1/.cc/` (must be gitignored — Phase 1 task adds this if missing).
 
-## Continuous-drive mode (v4.6 — read FIRST)
+## Continuous-manager doctrine (v5.0.3 — the no-sleep contract; read FIRST)
 
-You (Cowork) are the manager. **You do NOT stop watching while Claude Code is running in its terminal.** Specifically:
+You (Cowork) are the manager. **You never end your turn while an active job exists.** The cc-orchestrator scheduled task fires once per minute but its 60s fire-gap leaves windows where nothing is watching; the manager covers those windows by staying in the single turn.
 
-- **Don't wait for the user to ping you.** They started the run; they expect you to drive it through to completion, escalating only on hard blockers.
-- **Poll the CC terminal continuously** at 60–180s intervals. Use `read.sh` to check the visible buffer, `audit.sh` to diff directive vs commits, `git log --oneline -1` for cheap progress probes.
-- **Trigger the next phase automatically** when the current phase emits `phase_complete` in `<workspace>/.cc/state.json`. Don't ask the user "should I proceed?" — the plan is the answer; advance unless a phase is genuinely red.
-- **Escalate ONLY on:** (a) verify-gate red after 3 fix attempts (per bug-driven TDD), (b) hard external blocker (network down, secret missing, ambiguous design choice), or (c) the user explicitly asks you to stop.
-- **The CC side mirrors this contract** — see the "Operating mode" section that the v4.6 `directive_template.md` injects into every per-phase directive. CC also doesn't wait for pings within a phase.
+**End-of-turn conditions (the only five):**
+1. `state.sh job_complete` event lands in `<workspace>/.cc/state.json`.
+2. `done_criteria` from `active-job.json` is satisfied.
+3. `<workspace>/.cc/monitor.stop` file appears (user kill switch).
+4. The user EXPLICITLY tells you to stop in plain language.
+5. **3 consecutive failed unblock attempts** on the same prompt fingerprint — surface as `BLOCKED:` summary.
+
+Outside those five, returning to the user is the anti-pattern.
+
+**Per-cycle actions inside the turn (every 30-60s):**
+
+- **Read CC buffer** via `read.sh`. If `❯ N. <text>` line detected → invoke `unblock_cc.sh` directly. **Don't wait for the orchestrator's next fire** (up to 60s of latency).
+- **Check `git log`** for new commits since job-start sha.
+- **Read `.cc/state.json` tail** — if `phase_complete N` seen and `phase-(N+1).md` exists, send phase trigger manually via `send.sh` rather than waiting for the orchestrator. Manual phase trigger is acceptable when faster than the orchestrator's fire-gap.
+- **Trigger the next phase automatically** when the current phase emits `phase_complete`. Don't ask the user "should I proceed?" — the plan is the answer; advance unless a phase is genuinely red.
+- **Sleep 30-60s** then repeat. Never end the turn between cycles.
+
+**Parallel work the manager can do inside the turn** (without pausing CC):
+
+- Bug-driven TDD fixes to plugin scripts/SKILLs when bugs surface during the run.
+- Audit checkpoints (`audit.sh`) at each phase boundary.
+- Live SKILL refresh (assets/ + ~/Documents/Claude/Scheduled/ + MCP update_scheduled_task — three places in one batch).
+
+**The CC side mirrors this contract** — see the "Operating mode" section that the directive template injects into every per-phase directive. CC also doesn't wait for pings within a phase.
 
 If you find yourself ABOUT to ask the user "want me to continue?", stop and instead: (1) advance to the next phase, OR (2) escalate with a one-line `BLOCKED:` summary. There is no third option.
 
