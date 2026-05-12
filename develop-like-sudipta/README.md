@@ -1,7 +1,8 @@
 # develop-like-sudipta
 
-**Version:** 4.1.1
-**Tagline:** Battle-tested development discipline for Claude Code — 11 engineering pillars, real-browser verification, bug-driven TDD, substrate-aware end-to-end CC driving from Cowork, cross-browser/mobile + a11y + streaming testing, worktree-aware orchestration, commit-time bug-TDD enforcement via git hooks, and Karpathy-style autoresearch (self-improving skills via overnight propose-score-commit loops).
+**Version:** 5.0.0
+**Tagline:** Battle-tested development discipline for Claude Code — 11 engineering pillars, real-browser verification, bug-driven TDD, substrate-aware end-to-end CC driving from Cowork, three operating modes (A greenfield phased build / B SRE monitor / C single hotfix), the v5.0 continuous-loop architecture (L1 `--auto` per-call reviewer + L2 `cc-orchestrator` per-minute reasoning watcher + L3 `cc-coordinator-keepalive` watchdog-over-watchdog + cross-machine learnings sync), safety-net-only watchdog with a manager-decides default, cross-browser/mobile + a11y + streaming testing, worktree-aware orchestration, commit-time bug-TDD enforcement via git hooks, and Karpathy-style autoresearch (self-improving skills via overnight propose-score-commit loops).
+**v5.0.0 (May 2026):** Continuous-loop architecture — three layers (L1/L2/L3) + cross-machine sync. Six bundled scheduled tasks, `WATCHDOG_AUTO_APPROVE=0` default, `## Modes` section in the skill, `references/active_watcher.md` + `references/multi_machine.md`. Backed by `docs/plans/research-continuous-cowork-2026-05-12.md`.
 **v4.1.x (May 2026):** Karpathy autoresearch — every skill ships with `autoresearch/{program.md, score.sh, target.txt}`, a new `autoresearch` meta-skill drives the loop, 4 new slash commands operate the system.
 **v4.0.0 (May 2026):** Tier 3 hardening complete — 3 new agents, 2 new git hooks, cross-browser/mobile Playwright projects, opt-in a11y, streaming-protocol testing, worktree integration, approval cadence, stale-spec detection, screenshot archival, trigger-phrase evals.
 **Author:** Sudipta Dhara — [github.com/sudipta26889](https://github.com/sudipta26889)
@@ -22,6 +23,8 @@ v3.4 expanded the CC-driver toolkit: GitHub Actions e2e workflow auto-emission, 
 v4.0 closes the remaining skill gaps from the 24-gap audit. Three new isolated-context agents (`audit-agent`, `bug-triage-agent`, `playwright-spec-reviewer`) handle audit summarization, bug intake, and spec QA. Two new git hooks (`check_bug_id.sh`, `check_test_paired_with_src.sh`) enforce bug-TDD discipline at commit time. Cross-browser/mobile Playwright projects (`assets/playwright.config.template.ts`) and opt-in `axe-playwright` a11y assertions widen real-browser coverage. WebSocket / SSE / HTTP-streaming testing patterns (`references/streaming_testing.md`) cover non-request-response surfaces. Worktree-aware orchestration (`references/worktree_integration.md`) keeps driver lock + WORKSPACE resolution sane across parallel feature branches. Approval cadence with `pause_at` config gives users explicit human checkpoints. Source-hash compare auto-detects stale per-phase specs and triggers regen. Old screenshots get archived and stale specs quarantined via `scripts/cleanup_test_artifacts.sh`. Trigger-phrase eval coverage for substrate / verify-gate / bug-TDD is now in `evals/`.
 
 v4.1 introduces Karpathy-style autoresearch — the plugin now self-improves its own skills overnight. Every shipped skill carries an `autoresearch/` subdirectory containing three files: `program.md` (the goal in plain English), `score.sh` (a deterministic metric — F1 on a trigger corpus, accuracy on a routing benchmark, etc.), and `target.txt` (the file under mutation, typically the skill's SKILL.md or a routing reference). The new `autoresearch` meta-skill drives a tight propose-score-commit loop: read program → propose ONE mutation to the target → score it → commit if better, reset if worse, then iterate. Four new slash commands operate the system: `/autoresearch <skill>` starts a run, `/autoresearch-status` shows accept rate and best score so far, `/autoresearch-resume` picks up an interrupted run, and `/autoresearch-baseline` re-runs the baseline scorer without mutating anything. Three skills ship with baselines today: `sd-claude-code-access` (F1 = 0.78 on trigger-phrase classification), `develop-like-sudipta` (accuracy = 47.91 on pillar-routing benchmark), `code-hacker` (F1 = 0.31 on attack-category classification). The baselines were intentionally chosen to leave substantial headroom — overnight loops have room to climb. Based on [karpathy/autoresearch](https://github.com/karpathy/autoresearch).
+
+v5.0 ships the continuous-loop architecture in three layers (backed by `docs/plans/research-continuous-cowork-2026-05-12.md`). **L1** — `launch_cc.sh` defaults `CC_LAUNCH_FLAGS` to `--continue --chrome --auto`, routing every CC tool call through Anthropic's April-2026 Sonnet-4.6 server-side reviewer. **L2** — new `cc-orchestrator` scheduled task (`* * * * *`) is the per-minute reasoning watcher: reads `<workspace>/.cc/active-job.json`, polls CC's buffer, decides approve/deny/revise, advances phases on `phase_complete`, escalates stalls. **L3** — `cc-coordinator-keepalive` (`*/5 * * * *`) is the watchdog over the orchestrator: detects heartbeat staleness, fires Slack/email when configured, and self-disables both scheduled tasks once every active job hits its `done_criteria`. The architectural pivot also flips the v4.x watchdog default to **safety-net-only** (`WATCHDOG_AUTO_APPROVE=0`) — the manager (Cowork or human) decides every non-danger prompt deliberately, the watchdog only refuses `danger_patterns.txt` matches. A new `## Modes` section in the skill maps three use cases to artifact patterns: **Mode A** (greenfield phased build — pre-written `docs/plans/` + `.cc/phase-N.md` directives), **Mode B** (SRE monitor — watch a running system, fix anomalies as they arise, phase numbering = bug ID), **Mode C** (single hotfix — one `.cc/fix-<slug>.md`, two commits, done in under an hour). Cross-machine learnings sync arrives via `sync_learnings.sh` (rsync-over-SSH; per-peer best-effort) + the new `ccbridge-sync-learnings` scheduled task (`0 */6 * * *`); aggregator walks `learnings/remote-*/*.jsonl` with `source_host` tags and distillation gains a `cross-machine?` dimension that weights cross-machine signatures strictly higher than single-machine cross-project. Stop conditions are mandatory: `max_cycles`, `max_duration_hours`, `<ws>/.cc/monitor.stop` kill switch, `max_fix_attempts_per_cycle` cooldown, `cycle_timeout_s` wall-clock cap. Six bundled scheduled tasks now (see table below). New references: `references/active_watcher.md` (manager-decides model + job spec + escalation channels) and `references/multi_machine.md` (peer setup + privacy + bandwidth + failure modes).
 
 ---
 
@@ -88,6 +91,19 @@ v4.1 introduces Karpathy-style autoresearch — the plugin now self-improves its
 | `check_test_paired_with_src.sh` | pre-commit (opt-in via `setup.sh`) | Blocks commits where production code is added without a paired test file change. |
 | `setup.sh` | One-time install | Wires the hooks above into your Claude Code config and (opt-in) installs the git pre-commit hooks. |
 
+### Scheduled tasks (Cowork-registered via `/ccbridge-init`)
+
+| Task | Cron | Purpose |
+|---|---|---|
+| `ccbridge-aggregate-learnings` | `15 2 * * *` (daily 02:15) | Merge every workspace's `~/.cache/ccbridge/learnings/*.jsonl` tail (plus `learnings/remote-*/` peer pulls) into per-day aggregated jsonl. |
+| `ccbridge-distill-and-propose` | `30 3 * * 0` (Sundays 03:30) | Turn 7-day aggregates into a top-N-signatures markdown report. Tags `cross-project?` AND `cross-machine?` (v5.0). |
+| `ccbridge-propose-fix-pr` | `0 9 * * 1` (Mondays 09:00) | Walk distilled priors → route signatures through dispatch table → spawn CC against plugin clone → drive bug-driven TDD → open draft PR via `gh pr create --draft`. |
+| `cc-orchestrator` (v5.0 L2) | `* * * * *` (every minute) | Per-minute reasoning watcher. Reads `<ws>/.cc/active-job.json`, polls CC's buffer, decides approve/deny/revise, advances phases, escalates stalls. Step-1 early-exits on idle machines (no quota burn). |
+| `cc-coordinator-keepalive` (v5.0 L3) | `*/5 * * * *` (every 5 min) | Watchdog over `cc-orchestrator`. Detects heartbeat staleness, fires Slack/email when `<ws>/.cc/active-job.json` has `notify_*` channels set, self-disables both scheduled tasks once every active job hits `done_criteria`. |
+| `ccbridge-sync-learnings` (v5.0) | `0 */6 * * *` (every 6h) | rsync-over-SSH pull of peer Macs' learning tails into `learnings/remote-<host>/`. Opt-in via `~/.cache/ccbridge/peers.json`; absent file = no sync. |
+
+`/ccbridge-init` registers/refreshes all six idempotently, preserving any user-customized cron expressions.
+
 ---
 
 ## Compatibility
@@ -101,17 +117,28 @@ v4.1 introduces Karpathy-style autoresearch — the plugin now self-improves its
 
 ## Quickstart
 
-**Start a new project end-to-end with Claude Code:**
+Pick the [mode](#modes) (A / B / C) that matches your use case. Each lands a different artifact pattern under `<workspace>/.cc/`.
+
+**Mode A — Greenfield phased build:**
 ```
 /cc-drive /absolute/path/to/new/workspace
 ```
-Cowork probes substrate, brainstorms the project with you, writes the PRD + plan, then drives Claude Code phase by phase with per-phase verify-gate (unit/integration green) followed by browser verification (Playwright spec emitted into `docs/e2e-testing/`).
+Cowork probes substrate, brainstorms the project with you, writes the PRD + plan in `docs/plans/`, then drives Claude Code phase by phase through `.cc/phase-1.md`, `.cc/phase-2.md`, ... — each with verify-gate (unit/integration green) + browser verification (Playwright spec emitted into `docs/e2e-testing/`). CC is launched with `--auto` by default (v5.0), so every tool call goes through Anthropic's server-side reviewer; the safety-net-only watchdog (`WATCHDOG_AUTO_APPROVE=0`) refuses `danger_patterns.txt` matches and logs every other prompt as `prompt_pending` for the manager to attend. See [`references/active_watcher.md`](skills/sd-claude-code-access/references/active_watcher.md) for the manager-decides decision tree.
 
-**Bug-driven TDD on a discovered issue:**
+**Mode B — SRE monitor (v5.0 L1+L2+L3):**
+```
+cp skills/sd-claude-code-access/assets/active-job.example.json /path/to/ws/.cc/active-job.json
+# edit job_id, plan_path, max_duration_hours, done_criteria, notify_* channels
+# (one-time per machine, if not already done)
+/ccbridge-init
+```
+The `cc-orchestrator` scheduled task picks up the new `active-job.json` within ≤ 60 s and starts the per-minute reasoning loop. `cc-coordinator-keepalive` watches the orchestrator's heartbeat every 5 minutes; on stalls (≥ 7 min stale) it escalates via Slack/email if the workspace's `notify_*` channels are set, and on `done_criteria` met it self-disables both scheduled tasks. Stop a run any time with `touch /path/to/ws/.cc/monitor.stop` (clean stop) or `rm /path/to/ws/.cc/active-job.json` (kill switch).
+
+**Mode C — Single hotfix:**
 ```
 /reproduce-bug /absolute/path/to/workspace "checkout total off by 1 cent on multi-line orders"
 ```
-A failing pytest case AND a failing Playwright step are written first, confirmed red, then the fix directive is sent to CC. No fix lands without a failing test pair.
+A failing pytest case AND a failing Playwright step are written first, confirmed red, then the fix directive is sent to CC. No fix lands without a failing test pair. Two commits land (`test(...)` red, `fix(...)` green); manager emits `state.sh bug_resolved` on four greens.
 
 **Verify the last feature CC built (or any specific phase):**
 ```
@@ -164,6 +191,7 @@ The plugin layers three things on top of Claude Code: (a) skills that load progr
 
 ## Versioning
 
+- **5.0.0** (2026-05-12) — Continuous-loop architecture. Three layers (L1 `--auto` per-call reviewer in `launch_cc.sh` defaults; L2 `cc-orchestrator` scheduled task at `* * * * *` doing per-minute reasoning over `<ws>/.cc/active-job.json`; L3 `cc-coordinator-keepalive` at `*/5 * * * *` doing stall escalation + self-disable on done) backed by `docs/plans/research-continuous-cowork-2026-05-12.md`. Cross-machine learnings sync via `scripts/sync_learnings.sh` (rsync-over-SSH) + `ccbridge-sync-learnings` scheduled task (`0 */6 * * *`); aggregator walks `learnings/remote-*/*.jsonl` with `source_host` tags; distillation gains `cross-machine?` dimension. Watchdog default flipped to safety-net-only (`WATCHDOG_AUTO_APPROVE=0`) — the manager (Cowork or human) decides every non-danger prompt deliberately via the `prompt_pending` event stream; legacy auto-approve is opt-in for unattended scheduled-task runs. New `## Modes` section in the skill (A greenfield / B SRE monitor / C hotfix). New references: `references/active_watcher.md`, `references/multi_machine.md`. Stop conditions enforced (`max_cycles`, `max_duration_hours`, `<ws>/.cc/monitor.stop`, cooldown after 3 failed fix attempts, `cycle_timeout_s` wall-clock cap). Six bundled scheduled tasks total; `/ccbridge-init` registers/refreshes all six idempotently. BUG-1 (`launch_cc.sh` regex missed bare-name `claude` argv[0]) fixed via bug-driven TDD; eval hardened to run in non-interactive runners. H4/D2/D3/D4/D5 doc + tooling gaps closed. 35+ commits across 7 plan phases.
 - **2.x** — 11 pillars enforced via the original `develop-like-sudipta` skill, plus `code-hacker` for red-team audits. Agents, hooks, and the first 8 slash commands established.
 - **3.0** — bundled `sd-claude-code-access` skill: end-to-end Claude Code driving from Cowork. Added `/cc-drive`, `/cc-resume`, `/cc-send`, `/browser-test`, `/e2e-suite`, `/cc-audit`. Per-phase real-browser verification via Claude in Chrome MCP, Playwright spec emission into `docs/e2e-testing/`.
 - **3.1** — verify gate (static checks + unit/integration tests via auto-detected runner) MUST be green before browser-test. Bug-driven TDD protocol made mandatory — no fix without a failing test pair first. Added `/reproduce-bug` and `/fix`.
