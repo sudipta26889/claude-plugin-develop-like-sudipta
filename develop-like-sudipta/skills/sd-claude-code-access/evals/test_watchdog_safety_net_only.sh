@@ -4,9 +4,11 @@
 # (NOT press Enter) when WATCHDOG_AUTO_APPROVE is unset or 0.
 #
 # Test mechanics — must run on macOS where `timeout` is not on PATH:
-#   - Background the watchdog, sleep 5s, kill it (SIGKILL — watchdog.sh's
-#     trap EXIT|INT|TERM cleans up DENY_SRC but does NOT exit on TERM, so
-#     SIGTERM is effectively ignored mid-loop). SIGKILL cannot be trapped.
+#   - Background the watchdog, sleep 5s, kill it. v5.0.1 watchdog handles
+#     SIGTERM cleanly via the on_signal trap → SIGKILL is no longer needed,
+#     but we keep it here as a belt-and-suspenders cleanup in case a future
+#     regression re-introduces BUG-2. SIGTERM dedicated coverage lives in
+#     test_watchdog_sigterm_exits.sh.
 #   - CCBRIDGE_HOME pinned to the temp DEST so learning.sh / register_project.sh
 #     don't pollute the user's real ~/.cache/ccbridge during the test run.
 set -uo pipefail

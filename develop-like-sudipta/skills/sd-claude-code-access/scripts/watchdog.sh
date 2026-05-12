@@ -36,7 +36,21 @@ DENY_SRC=""
 cleanup() {
   [ -n "$DENY_SRC" ] && rm -f "$DENY_SRC" 2>/dev/null
 }
-trap cleanup EXIT INT TERM
+# v5.0.1 — BUG-2 fix: the prior trap (`trap cleanup EXIT INT TERM`) cleaned up
+# the tmpfile on signal but did NOT exit the `while true` loop. Result:
+# SIGTERM was effectively ignored, forcing every wrapper (launch_cc,
+# start_watchdog, evals) to escalate to SIGKILL — which bypasses traps and
+# also defeats the cleanup. Split into two traps: EXIT runs cleanup only;
+# INT/TERM run cleanup AND exit explicitly. Conventional rc 128+signum so
+# wrappers can detect signal-driven termination.
+on_signal() {
+  cleanup
+  # 143 = 128 + SIGTERM(15); INT (130) would be more precise but TERM is
+  # the dominant path and a single rc keeps wrapper checks simple.
+  exit 143
+}
+trap cleanup EXIT
+trap on_signal INT TERM
 echo "[$(date)] watchdog started, pid=$$, danger=$DANGER, extras_path=${EXTRA_PATH:-<none>}, dryrun=$DRYRUN, auto_approve=$AUTO_APPROVE, workspace=${WORKSPACE:-<unset>}" >>"$LOG"
 last_seen=""
 PROMPT_PATTERN='Do you want to (proceed|make this edit|allow|continue|create|write|edit|delete|run)|^[[:space:]]*❯[[:space:]]*1\.[[:space:]]+(Yes|Continue|Allow|Proceed)'
