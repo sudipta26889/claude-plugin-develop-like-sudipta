@@ -10,16 +10,16 @@ A **Claude Code plugin marketplace** that ships one plugin: `develop-like-sudipt
 
 - `.claude-plugin/marketplace.json` — marketplace entry point. Points at the single plugin in `develop-like-sudipta/`.
 - `develop-like-sudipta/` — the plugin itself. Everything Claude Code loads at install time lives under here.
-  - `.claude-plugin/plugin.json` — plugin manifest. **The `version` field here is the source of truth** (currently `4.4.0`). Bump it on every release. The `description` is intentionally a long changelog — older versions live there.
+  - `.claude-plugin/plugin.json` — plugin manifest. **The `version` field here is the source of truth** (currently `5.0.1`; bump on every release). The `description` is intentionally a long changelog — older versions live there.
   - `agents/*.md` — 9 isolated-context subagents (`test-writer`, `implementer`, `code-reviewer`, `security-reviewer`, `dep-researcher`, `env-sync-checker`, `audit-agent`, `bug-triage-agent`, `playwright-spec-reviewer`).
-  - `commands/*.md` — 22 slash commands (`/plan`, `/implement`, `/audit`, `/secure`, `/hack`, `/review`, `/deploy`, `/fix`, `/refactor`, `/research-deps`, `/cc-drive`, `/cc-resume`, `/cc-send`, `/browser-test`, `/e2e-suite`, `/cc-audit`, `/reproduce-bug`, `/ccbridge-init`, plus the 4 `/autoresearch-*`).
+  - `commands/*.md` — 23 slash commands (`/plan`, `/implement`, `/audit`, `/secure`, `/hack`, `/review`, `/deploy`, `/fix`, `/refactor`, `/research-deps`, `/cc-drive`, `/cc-resume`, `/cc-send`, `/browser-test`, `/e2e-suite`, `/cc-audit`, `/reproduce-bug`, `/ccbridge-init`, `/ccbridge-status`, plus the 4 `/autoresearch-*`).
   - `hooks/` — `hooks.json` plus 4 `.sh` scripts (`tdd-gate`, `post-edit-check`, `completion-gate`, `state-saver`) + `scripts/` with the 2 opt-in git pre-commit hooks. `setup.sh` wires everything into `~/.claude/settings.json`.
   - `skills/` — four bundled skills, each with its own `SKILL.md` + `references/` + `evals/` (+ usually `scripts/` and `autoresearch/`):
     - `develop-like-sudipta/` — routing hub for the 11 pillars.
     - `code-hacker/` — 23-category red-team auditor invoked via `/hack`. Has its own `agents/` (one per attack category) and parallel-runnable `scripts/NN_*.sh`.
     - `sd-claude-code-access/` — drives Claude Code from Cowork; ships the **ccbridge** runtime (scripts that get copied to `~/.cache/ccbridge/` at install).
     - `autoresearch/` — Karpathy-style self-improvement meta-skill.
-  - `assets/scheduled-tasks/` — bundled Cowork scheduled-task SKILLs (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`) that `/ccbridge-init` copies into `~/Documents/Claude/Scheduled/`.
+  - `assets/scheduled-tasks/` — six bundled Cowork scheduled-task SKILLs (`ccbridge-aggregate-learnings`, `ccbridge-distill-and-propose`, `ccbridge-propose-fix-pr`, `cc-orchestrator`, `cc-coordinator-keepalive`, `ccbridge-sync-learnings`) that `/ccbridge-init` copies into `~/Documents/Claude/Scheduled/`.
 
 ## Two install / bootstrap paths (don't confuse them)
 
@@ -37,7 +37,7 @@ There is no central `make test`. Validation is per-component:
 
 - **Bridge scripts**: run them directly. `bash develop-like-sudipta/skills/sd-claude-code-access/scripts/diagnose.sh <workspace>` is the canonical health check. Many scripts have a no-op detect mode: `launch_cc.sh <workspace> --detect-only` exits 4 if no CC is running (safe to invoke anytime).
 - **Hook scripts**: pipe a JSON payload to stdin per the format in `develop-like-sudipta/hooks/HOOKS-README.md` and check stdout. Example: `echo '{"tool_name":"Write","file_path":"/tmp/x.py","path":"/tmp/x.py"}' | bash develop-like-sudipta/hooks/tdd-gate.sh`.
-- **Skill evals**: each skill has an `evals/` dir. `develop-like-sudipta/skills/develop-like-sudipta/evals/test_dls_autoresearch_wiring.sh` is the only present executable eval — run it directly. The autoresearch-driven scorers live at `develop-like-sudipta/skills/<skill>/autoresearch/score.sh` and emit a single number on stdout (F1 or accuracy).
+- **Skill evals**: each skill has an `evals/` dir. The `sd-claude-code-access` skill is the heaviest user (25 executable `test_*.sh` scripts covering watchdog prompt classification, danger-pattern coverage, BUG-1 bare-name regex, sync dry-run, etc.); `autoresearch` has 4, `develop-like-sudipta` and `code-hacker` have 1 each. Run any of them directly with `bash <path-to-test>.sh`. The autoresearch-driven scorers live at `develop-like-sudipta/skills/<skill>/autoresearch/score.sh` and emit a single number on stdout (F1 or accuracy).
 - **End-to-end**: install the plugin into a real Claude Code session (`/plugin marketplace add /Users/sudipta/Workspace/personal/claude-plugin-develop-like-sudipta` then `/plugin install develop-like-sudipta`) and invoke a slash command. There is no faster way to validate slash-command frontmatter or `allowed-tools` lists.
 
 ## Architectural conventions to preserve
@@ -54,7 +54,7 @@ There is no central `make test`. Validation is per-component:
 If you're modifying anything under `skills/sd-claude-code-access/scripts/`:
 
 - **WORKSPACE resolution must be three-layer** (`start_watchdog.sh`): (1) honor env, (2) auto-detect from a running terminal-mode `claude` process's cwd via `lsof -a -p <pid> -d cwd` filtering out anything under `Claude.app/Contents/`, (3) fail-fast loudly. Silent learning-loss is the failure mode this guards against.
-- **Filter Cowork-embedded Claudes out of process scans.** `awk '$2 ~ /\/claude$/ && $2 !~ /Claude\.app\//'` is the canonical filter — apply it anywhere you `ps -axo` for `claude`.
+- **Filter Cowork-embedded Claudes out of process scans.** `awk '$2 ~ /^claude$|\/claude$/ && $2 !~ /Claude\.app\//'` is the canonical filter (v5.0+ — the leading `^claude$` alternation was added by BUG-1's bug-driven TDD to match user-shell-launched CCs whose `ps` shows a bare `claude` argv[0], not just full-path Cowork-embedded ones). Apply it anywhere you `ps -axo` for `claude`.
 - **Bundled scheduled-task SKILLs reference `~/.cache/ccbridge/<script>.sh`, NOT plugin-relative paths.** That's why `install.sh` copies `aggregate_learnings.sh` + `distill_learnings.sh` out of the autoresearch dir into the canonical bridge dir. Don't break that — v4.3.3 fixed the portability bug.
 - **Runtime-learning events dual-write** to `<workspace>/.cc/learnings.jsonl` (debuggable, local) AND `~/.cache/ccbridge/learnings/<id>.jsonl` (central tail, swept nightly). `learning.sh` does both; per-workspace `.cc/` must be gitignored.
 
