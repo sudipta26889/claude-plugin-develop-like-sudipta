@@ -27,7 +27,7 @@ PLUGIN_HINT="${1:-}"   # optional: path hint to the plugin root
 EXPECTED_SCRIPTS=(
   send.sh read.sh read_history.sh keys.sh
   watchdog.sh start_watchdog.sh stop_watchdog.sh
-  nudge_if_stuck.sh audit.sh
+  nudge_if_stuck.sh audit.sh unblock_cc.sh
   state.sh state_salvage.sh lock.sh diagnose.sh run_summary.sh
   install_precommit.sh escalate.sh
   register_project.sh learning.sh launch_cc.sh
