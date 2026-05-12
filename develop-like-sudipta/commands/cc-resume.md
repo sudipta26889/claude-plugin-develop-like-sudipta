@@ -31,6 +31,8 @@ Resume a previously running Claude Code session at `$1`.
 9. **Wait for confirmation.** Do not proceed until the user says go.
 10. **Once confirmed:** acquire lock, start watchdog, write the next directive, send the trigger, resume the per-phase loop including the browser-test step.
 
+    **Re-enter the v5.0.3 continuous-manager loop** — don't end your turn until one of: `job_complete`, `<workspace>/.cc/monitor.stop` exists, or 3 consecutive failed unblock attempts on the same fingerprint. A resumed session inherits the same no-sleep contract as a fresh `/cc-drive` run: poll, decide, act, repeat. See `skills/sd-claude-code-access/SKILL.md` `## Continuous-manager doctrine` for the full contract (end-of-turn conditions, polling cadence, unblock escalation).
+
 ## Edge cases
 
 - **Stale `.driver.lock` from this same host but dead pid** — take it.
