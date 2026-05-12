@@ -49,12 +49,32 @@ For each `active-job.json` found:
 
 4. **Decide action** based on what the buffer + state events show:
    - **CC paused at a permission prompt** (`prompt_pending` event since the last
-     `manager_decision`): read prompt context, decide approve/deny/revise, send
-     the appropriate keystroke via `~/.cache/ccbridge/keys.sh`, then log a
-     `state.sh "$WS" manager_decision action=<approve|deny|revise> fp=<fp> reason=<one-line>`
-     event. The L1 reviewer (CC `--auto`) has already blocked obvious dangers
-     server-side; your job is the strategic call (does this match the directive's
-     intent?). See references/active_watcher.md for the decision tree.
+     `manager_decision`):
+     1. **Detect + understand first** — read buffer via `~/.cache/ccbridge/read.sh`.
+        Confirm the prompt question (e.g. "Do you want to proceed?") AND parse
+        the option list. The cursor (`❯` glyph) marks the CURRENT option which
+        is often the LAST option ("No") — pressing return blindly REJECTS the
+        action and bails out of safe work (BUG-4 from v5.0.0 cycle 18). NEVER
+        press return on a multi-option prompt without first reading the cursor
+        position from the buffer.
+     2. **Unblock via `unblock_cc.sh`** (v5.0.2+) — the canonical bridge script
+        for safe navigation. It handles detect → danger-check → parse cursor →
+        navigate to option 1 ("Yes" — the safe affirm for routine actions) →
+        press return. Refuses (exit 2) on danger-pattern match.
+        ```
+        bash ~/.cache/ccbridge/unblock_cc.sh
+        # exit 0 = unblocked, 2 = danger-refused, 3 = no prompt, 5 = parse fail
+        ```
+        If unblock_cc.sh isn't present (pre-v5.0.2 plugin install) → fall back
+        to the legacy path: read cursor manually, send the appropriate `up`/
+        `down`/`return` sequence via `keys.sh`.
+     3. **Log the manager_decision** event via state.sh (unblock_cc.sh does
+        this for you when WORKSPACE is set; only emit manually if you took the
+        legacy path).
+     The L1 reviewer (CC `--permission-mode auto`) already blocks obvious
+     dangers server-side; your job is the strategic call (does this match the
+     directive's intent?). See references/active_watcher.md for the decision
+     tree.
    - **CC just finished a phase** (`phase_complete` event since the last
      `phase_start`): check `<workspace>/.cc/phase-<N+1>.md` exists. If yes, send
      `Read .cc/phase-<N+1>.md and proceed.` via `~/.cache/ccbridge/send.sh`. If
