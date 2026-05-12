@@ -112,19 +112,47 @@ done
 sleep 0.2
 bash "$DEST/keys.sh" return
 
-# Step 6 — log for audit + autoresearch
+# Step 6 — log for audit + autoresearch.
+#
+# BUG-5/6 fix: state.sh + learning.sh can hang when called from a CLI/Cowork
+# parent that holds a competing flock on ~/.cache/ccbridge/projects.json (or
+# similar). The orchestrator's per-fire wall-clock cap (25s) cannot interrupt
+# a blocked shell call — only the agent's reasoning loop. Result: a single
+# stuck state.sh propagates to a stuck orchestrator fire.
+#
+# Wrap each logging call in `( command ) &` + `wait -t` (or sleep-based kill)
+# so logging is best-effort, bounded, and never blocks navigation. The
+# keystrokes already landed before this section — losing one state event is
+# strictly cheaper than losing the orchestrator fire.
+_bounded_log() {
+  # $1 = script path, rest = args
+  local script="$1"; shift
+  ( "$script" "$@" >/dev/null 2>&1 ) &
+  local pid=$!
+  local waited=0
+  while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 3 ]; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    # Logging call hung — kill it; the keystroke we sent earlier still
+    # took effect. Best-effort logging only.
+    kill -KILL "$pid" 2>/dev/null
+    echo "[unblock] WARN: log call timed out after 3s (keystroke OK)" >&2
+  fi
+}
 if [ -n "$WS" ] && [ -x "$DEST/state.sh" ]; then
-  "$DEST/state.sh" "$WS" manager_decision \
+  _bounded_log "$DEST/state.sh" "$WS" manager_decision \
     "action=unblock" \
     "method=up_x${STEPS}_return" \
     "cursor_was=$CURSOR_OPT" \
-    "target=$TARGET_OPTION" >/dev/null 2>&1 || true
+    "target=$TARGET_OPTION"
 fi
 if [ -n "$WS" ] && [ -x "$DEST/learning.sh" ]; then
-  "$DEST/learning.sh" "$WS" permission_pattern \
+  _bounded_log "$DEST/learning.sh" "$WS" permission_pattern \
     "outcome=unblocked" \
     "cursor_was=$CURSOR_OPT" \
-    "target=$TARGET_OPTION" >/dev/null 2>&1 || true
+    "target=$TARGET_OPTION"
 fi
 
 echo "[unblock] sent up x$STEPS, return — cursor moved to option $TARGET_OPTION"
