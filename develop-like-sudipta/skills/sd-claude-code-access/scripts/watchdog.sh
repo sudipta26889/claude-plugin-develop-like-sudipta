@@ -53,9 +53,38 @@ trap cleanup EXIT
 trap on_signal INT TERM
 echo "[$(date)] watchdog started, pid=$$, danger=$DANGER, extras_path=${EXTRA_PATH:-<none>}, dryrun=$DRYRUN, auto_approve=$AUTO_APPROVE, workspace=${WORKSPACE:-<unset>}" >>"$LOG"
 last_seen=""
+last_interrupt_fp=""
 PROMPT_PATTERN='Do you want to (proceed|make this edit|allow|continue|create|write|edit|delete|run)|^[[:space:]]*❯[[:space:]]*1\.[[:space:]]+(Yes|Continue|Allow|Proceed)'
+# v5.0.5 FAILURE 4 — CC's "Interrupted · What should Claude do instead?" UI
+# is NOT a permission prompt; it's a typed-response request. The watchdog
+# must detect it as a SEPARATE state (prompt_interrupted) so the manager
+# knows to send a re-trigger message via send.sh rather than press return.
+# Trigger source: parallel ops killing CC's command, network failure mid-tool,
+# user-issued Esc that landed mid-bash, etc.
+INTERRUPT_PATTERN='Interrupted ·'
 while true; do
   buf=$("$DEST/read.sh" 2>/dev/null | tail -50)
+  # Interrupt check runs BEFORE prompt check. Both can theoretically match
+  # at once if CC interrupts then immediately surfaces a prompt; the
+  # interrupt state takes precedence because it's the one that needs a
+  # typed response.
+  if echo "$buf" | grep -qF "$INTERRUPT_PATTERN" ; then
+    ifp=$(echo "$buf" | shasum -a 256 | cut -c1-12)
+    if [ "$ifp" != "$last_interrupt_fp" ]; then
+      echo "[$(date)] INTERRUPT fp=$ifp - CC paused at typed-response UI, emitted prompt_interrupted (no keystroke)" >>"$LOG"
+      if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
+        snippet_int=$(echo "$buf" | tr '\n' ' ' | awk '{print substr($0,1,200)}' | iconv -c -t UTF-8//IGNORE 2>/dev/null || echo "")
+        "$DEST/state.sh" "$WORKSPACE" prompt_interrupted "fp=$ifp" "snippet=$snippet_int" >/dev/null 2>&1 || true
+      fi
+      if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+        "$DEST/learning.sh" "$WORKSPACE" watchdog_recovery \
+          "outcome=interrupt_detected" "fp=$ifp" >/dev/null 2>&1 || true
+      fi
+      last_interrupt_fp="$ifp"
+    fi
+    sleep 4
+    continue
+  fi
   if echo "$buf" | grep -qE "$PROMPT_PATTERN" ; then
     fp=$(echo "$buf" | shasum -a 256 | cut -c1-12)
     if [ "$fp" != "$last_seen" ]; then
