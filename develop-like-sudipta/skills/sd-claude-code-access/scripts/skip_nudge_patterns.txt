@@ -1,0 +1,43 @@
+# skip_nudge_patterns.txt — v5.0.5 FAILURE 10 fix.
+#
+# When nudge_if_stuck.sh detects a same-fingerprint stall, it checks the
+# visible buffer for any of these patterns BEFORE pressing Esc. If any
+# match, the nudge is suppressed (CC is doing legitimate long-running I/O,
+# not actually hung). The script logs `nudge_skipped` and resets confirms.
+#
+# Rationale: a `docker pull` from India/APAC can hang silently for 5+ min
+# with no output. Pre-v5.0.5, that triggered a false-positive Esc that
+# killed the pull. Each pattern below represents a real long-I/O op the
+# manager confirmed should be allowed to run.
+#
+# Add patterns one per line. Lines starting with # are comments. Patterns
+# are checked with `grep -F` (literal substring), not regex.
+#
+# Tune per project via `<workspace>/.cc/skip_nudge_patterns_extra.txt`.
+
+docker pull
+docker build
+docker compose build
+docker compose pull
+docker compose up -d --build
+npm install
+npm ci
+pnpm install
+yarn install
+yarn install --immutable
+pip install
+pip install -r
+uv add
+uv pip install
+cargo build
+cargo fetch
+go mod download
+go build
+mvn install
+mvn package
+gradle build
+./gradlew build
+Downloading from
+Pulling from
+Resolving dependencies
+Fetching package metadata

@@ -26,6 +26,15 @@ SCRIPTS=(
   # calls $DEST/sync_learnings.sh by canonical bridge-dir path (same pattern
   # as aggregate/distill — stable across plugin install location).
   sync_learnings.sh
+  # v5.0.2 — manager-side detect+navigate for multi-option prompts (BUG-4).
+  unblock_cc.sh
+)
+
+# v5.0.5 — non-executable data file: skip_nudge_patterns.txt. Same install path
+# as the scripts above so nudge_if_stuck.sh can find it via $DEST without an
+# extra plugin-root probe. Copied separately because it doesn't need chmod +x.
+DATA_FILES=(
+  skip_nudge_patterns.txt
 )
 
 # v4.3 — bootstrap ccbridge data subdirs so learning.sh + register_project.sh
@@ -54,6 +63,14 @@ done
 
 # Copy the danger-pattern allow/deny list (consulted by watchdog).
 cp -f "$HERE/danger_patterns.txt" "$DEST/danger_patterns.txt"
+
+# v5.0.5 — non-executable data files (e.g. skip_nudge_patterns.txt for
+# nudge_if_stuck.sh's FAILURE 10 fix).
+for f in "${DATA_FILES[@]}"; do
+  if [ -f "$HERE/$f" ]; then
+    cp -f "$HERE/$f" "$DEST/$f"
+  fi
+done
 
 # Backwards-compat symlink so old docs still work.
 if [ ! -L /tmp/ccbridge ] && [ ! -e /tmp/ccbridge ]; then
