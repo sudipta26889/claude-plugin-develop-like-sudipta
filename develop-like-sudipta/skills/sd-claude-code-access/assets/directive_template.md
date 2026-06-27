@@ -94,3 +94,107 @@ The gate that has to clear before checkpoint.
 <What you EXPLICITLY don't want CC to expand into. Example: "Don't add
 dashboard UI for this; that lands in Phase 10. Just expose the API
 endpoint.">
+
+## (Optional) Deploy phase template — drop in if this phase deploys a service
+
+> v5.0.5 — field-tested against GuardianAI 20-phase deploy. Use when
+> the phase outcome is "service is running and serving requests".
+> Replace the existing Acceptance section with the Mandatory acceptance
+> gate below.
+
+### Pre-flight (BEFORE any build/start)
+
+```bash
+# 1. Docker base image cached? Hangs from APAC are 20+ min silent.
+BASE_IMAGE=$(grep "^FROM" Dockerfile 2>/dev/null | head -1 | awk '{print $2}')
+if [ -n "$BASE_IMAGE" ] && ! docker image inspect "$BASE_IMAGE" >/dev/null 2>&1; then
+  echo "WARNING: $BASE_IMAGE not cached. Pulling now (2-min timeout)..."
+  timeout 120 docker pull "$BASE_IMAGE" || {
+    echo "PULL FAILED. FALLBACK: skip Docker, use venv (Option B below)."
+    exit 1
+  }
+fi
+
+# 2. Port conflict? Check host AND Docker.
+TARGET_PORT=${API_PORT:-8888}
+if ss -tlnp 2>/dev/null | grep -q ":${TARGET_PORT} "; then
+  echo "BLOCKED: Port ${TARGET_PORT} in use:"
+  ss -tlnp 2>/dev/null | grep ":${TARGET_PORT} "
+  echo "Options: kill the occupant OR change API_PORT in .env"
+  exit 1
+fi
+if docker ps --format '{{.Ports}}' 2>/dev/null | grep -q ":${TARGET_PORT}->"; then
+  echo "BLOCKED: Port ${TARGET_PORT} mapped by a Docker container"
+  exit 1
+fi
+
+# 3. Env vars loaded (NEVER use xargs — silent fail on URLs/special chars).
+set -a && source .env && set +a
+echo "Loaded: API_PORT=$API_PORT OLLAMA_MODEL=${OLLAMA_MODEL:-<unset>}"
+[ -z "$API_PORT" ] && { echo "ERROR: .env did not export API_PORT"; exit 1; }
+```
+
+### Deploy ladder (try in order)
+
+**Option A — Docker (preferred):**
+```bash
+docker compose up -d --build
+```
+
+**Option B — Direct venv (fallback when Docker is unavailable):**
+```bash
+cd <workdir>
+[ -d venv ] || python -m venv venv && source venv/bin/activate && pip install -e .
+source venv/bin/activate
+set -a && source .env && set +a
+python main.py  # or: uvicorn app:app --port $API_PORT --host 0.0.0.0
+```
+
+Option B is a production-valid fallback for projects that don't strictly
+require containers. Switch via `.env` `API_PORT` if Docker is occupying
+the port.
+
+### LLM fallback config (for projects using cloud LLMs)
+
+In `.env`:
+```
+OLLAMA_MODEL=glm-5.2:cloud
+OLLAMA_MODEL_FALLBACK=qwen3:14b
+```
+
+In the LLM-calling code:
+```python
+try:
+    response = llm.invoke(prompt)
+except Exception as e:
+    if "429" in str(e) or "rate limit" in str(e).lower():
+        fallback = ChatOllama(model=os.getenv("OLLAMA_MODEL_FALLBACK", "qwen3:14b"))
+        response = fallback.invoke(prompt)
+    else:
+        raise
+```
+
+### Tmux layout (multi-service deploys)
+
+```bash
+tmux new-window -t cc -n app       "bash -c 'cd <workdir> && set -a && source .env && set +a && python main.py 2>&1 | tee /tmp/app.log'"
+tmux new-window -t cc -n dashboard "bash -c 'cd <workdir>/dashboard && npm run dev -- --host 0.0.0.0 --port 5173'"
+tmux new-window -t cc -n logs      "bash -c 'tail -f /tmp/app.log'"
+tmux list-windows -t cc
+```
+
+### Mandatory acceptance gate (the ONLY signal phase is done)
+
+```bash
+MAX_WAIT=30
+for i in $(seq 1 $MAX_WAIT); do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${API_PORT}/health)
+  [ "$STATUS" = "200" ] && { echo "✅ Health check PASSED"; break; }
+  [ "$i" = "$MAX_WAIT" ] && { echo "❌ Health check FAILED after ${MAX_WAIT}s"; exit 1; }
+  sleep 1
+done
+curl -s http://localhost:${API_PORT}/health
+```
+
+**Do not mark `phase_complete` without a 200 from /health.** "Service started"
+≠ "service is serving requests".

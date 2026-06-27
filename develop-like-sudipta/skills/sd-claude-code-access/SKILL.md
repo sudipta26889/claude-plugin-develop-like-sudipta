@@ -498,6 +498,56 @@ Before kicking off the loop:
 
 Full playbook: [`references/managing_long_runs.md`](references/managing_long_runs.md).
 
+## Known footguns (v5.0.5 — from field reports)
+
+### Env loading: `xargs` breaks on URLs and special chars
+
+`export $(cat .env | xargs)` silently fails on values containing `@`, `+`,
+`:`, `//`, `=`, or spaces. The `DATABASE_URL=postgresql+asyncpg://...`
+pattern is the classic trigger — env vars don't get exported, app falls
+back to defaults, you discover the silent miss in production logs.
+
+**Always use:** `set -a && source .env && set +a`
+
+Verify immediately after sourcing: `echo "PORT=$API_PORT MODEL=$OLLAMA_MODEL"`.
+Empty output = sourcing failed silently.
+
+### Parallel-ops conflict: SSH + CC running the same build
+
+When CC is running `docker build`, `docker compose up`, `npm install`,
+`pip install`, `cargo build` — DO NOT run the same command from another
+shell or SSH session. These share lock files (`.docker-compose.lock`,
+`node_modules/.staging/...`, pip's tmp dirs) and will conflict. The
+typical failure mode is CC's command getting killed and CC dropping
+into the "Interrupted ·" UI (see Interrupt recovery below).
+
+If you want to monitor progress, use read-only commands: `docker events`,
+`journalctl -f`, `tail -f <build-log>`. NEVER a parallel build.
+
+### Interrupt recovery: CC's "Interrupted ·" UI
+
+CC's `Interrupted · What should Claude do instead?` UI is **not** a
+permission prompt. The watchdog (v5.0.5+) emits a `prompt_interrupted`
+state event when it detects this; the manager responds with a typed
+re-trigger via `send.sh`, NOT a return-press via `keys.sh`.
+
+Canonical re-trigger messages:
+- Generic: `Please continue from where you left off. If the previous
+  command was interrupted, restart it.`
+- Docker/long-running: `The Docker build was interrupted by an external
+  conflict. Please re-run: docker compose up -d --build from <workdir>`
+
+### Skip-nudge patterns for long I/O
+
+`nudge_if_stuck.sh` (v5.0.5+) checks `~/.cache/ccbridge/skip_nudge_patterns.txt`
+before pressing Esc on a confirmed buffer-hang. Default patterns cover
+`docker pull|build`, `npm/pip/cargo install`, `Pulling from`, `Downloading
+from`, etc. Add project-specific patterns to
+`<workspace>/.cc/skip_nudge_patterns_extra.txt` — picked up dynamically.
+
+This guards against false-positive Esc on legitimate slow ops (a Docker
+pull from APAC commonly hangs >5min with zero output).
+
 ## Anti-patterns
 
 - **Don't end the turn while an active job exists.** This is the v5.0.3
