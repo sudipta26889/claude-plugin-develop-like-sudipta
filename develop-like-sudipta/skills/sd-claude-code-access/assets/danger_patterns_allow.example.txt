@@ -1,0 +1,34 @@
+# .cc/danger_patterns_allow.txt — project-scoped exemptions (v5.0.6+)
+#
+# Copy to <your-workspace>/.cc/danger_patterns_allow.txt and edit.
+#
+# The watchdog checks THIS file BEFORE the deny-list. A match here means the
+# prompt is approved even though it would otherwise trip a base pattern in
+# danger_patterns.txt. Every exemption is logged to watchdog.log as
+# `ALLOW fp=... matched=...` and emits a `danger_exempted` state event, so
+# an exemption is never invisible.
+#
+# ── THE ONE RULE ────────────────────────────────────────────────────────────
+# An exemption MUST be narrower than the pattern it exempts.
+#
+#   base pattern 46:  \bDROP[[:space:]]+(TABLE|DATABASE|SCHEMA|INDEX)\b
+#   BAD  allow entry: \bDROP\b                 ← exempts everything. Never do this.
+#   GOOD allow entry: \bDROP DATABASE ... test_[a-z0-9_]+   ← scoped to test DBs
+#
+# If you find yourself writing a broad allow entry to "just make it stop",
+# the right move is to fix the command CC is running, not to blind the guard.
+# ────────────────────────────────────────────────────────────────────────────
+#
+# Format: one ERE per line (same as danger_patterns.txt). `#` = comment.
+# Matched case-insensitively against the visible CC buffer via `grep -qiE`.
+
+# ── Example: Django recreates its own ephemeral test database between runs.
+# Scoped to the `test_` prefix, so a DROP of the REAL database still trips
+# base pattern 46 and still gets refused.
+# \bDROP[[:space:]]+DATABASE[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?test_[a-z0-9_]+
+
+# ── Example: pytest-postgresql / testcontainers teardown of a scratch schema.
+# \bDROP[[:space:]]+SCHEMA[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?pytest_[a-z0-9_]+
+
+# ── Example: a migration harness truncating only its own fixtures table.
+# \bTRUNCATE[[:space:]]+TABLE[[:space:]]+fixtures_scratch\b

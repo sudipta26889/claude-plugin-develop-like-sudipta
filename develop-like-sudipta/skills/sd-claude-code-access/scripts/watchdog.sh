@@ -89,6 +89,35 @@ while true; do
     fp=$(echo "$buf" | shasum -a 256 | cut -c1-12)
     if [ "$fp" != "$last_seen" ]; then
       blocked=""
+      # v5.0.6 BUG-2 — project-scoped ALLOW-list, checked BEFORE the deny scan.
+      #
+      # Field report: Django recreates its own ephemeral test database between
+      # runs (`DROP DATABASE IF EXISTS test_app_master`), tripping base pattern
+      # 46 five times in one session. Pre-v5.0.6 the ONLY escape hatch was
+      # danger_patterns_extra.txt, which can only ADD patterns — a project had
+      # no way to say "this specific shape is safe here" without deleting a
+      # base pattern for everyone. Repeatedly approving DROP DATABASE by reflex
+      # is the exact opposite of what a deny-list is for.
+      #
+      # Contract: an allow entry must be NARROWER than the pattern it exempts.
+      # `\bDROP\b` as an allow entry is a self-inflicted wound. Every exemption
+      # is logged LOUDLY + emits a danger_exempted state event so it is never
+      # invisible. See references/danger_pattern_governance.md.
+      allowed=""
+      ALLOW_PATH=""
+      if [ -n "${WORKSPACE:-}" ]; then
+        ALLOW_PATH="$WORKSPACE/.cc/danger_patterns_allow.txt"
+      fi
+      if [ -n "$ALLOW_PATH" ] && [ -f "$ALLOW_PATH" ]; then
+        while IFS= read -r apat; do
+          [ -z "$apat" ] && continue
+          case "$apat" in \#*) continue ;; esac
+          if echo "$buf" | grep -qiE "$apat" ; then
+            allowed="$apat"
+            break
+          fi
+        done < "$ALLOW_PATH"
+      fi
       # Re-check extras file existence per cycle so files created
       # after the watchdog started are picked up automatically.
       EXTRA=""
@@ -103,7 +132,19 @@ while true; do
         [ -f "$DANGER" ] && cat "$DANGER" >> "$DENY_SRC"
         [ -n "$EXTRA" ] && { echo ""; cat "$EXTRA"; } >> "$DENY_SRC"
       fi
-      if [ -n "$DENY_SRC" ] && [ -f "$DENY_SRC" ]; then
+      # v5.0.6 BUG-2 — allow-list wins: skip the deny scan entirely, log loudly.
+      if [ -n "$allowed" ]; then
+        echo "[$(date)] ALLOW fp=$fp matched=$allowed - exempted by project allow-list" >>"$LOG"
+        if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/state.sh" ]; then
+          "$DEST/state.sh" "$WORKSPACE" danger_exempted "fp=$fp" "pattern=$allowed" >/dev/null 2>&1 || true
+        fi
+        if [ -n "${WORKSPACE:-}" ] && [ -x "$DEST/learning.sh" ]; then
+          "$DEST/learning.sh" "$WORKSPACE" permission_pattern \
+            "outcome=danger_exempted" "pattern=$allowed" "fp=$fp" >/dev/null 2>&1 || true
+        fi
+        [ -n "$DENY_SRC" ] && { rm -f "$DENY_SRC" 2>/dev/null || true; DENY_SRC=""; }
+      fi
+      if [ -z "$allowed" ] && [ -n "$DENY_SRC" ] && [ -f "$DENY_SRC" ]; then
         while IFS= read -r pat; do
           [ -z "$pat" ] && continue
           [[ "$pat" =~ ^[[:space:]]*# ]] && continue
