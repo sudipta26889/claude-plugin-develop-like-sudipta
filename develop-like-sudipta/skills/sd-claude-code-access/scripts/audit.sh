@@ -262,7 +262,19 @@ EOF
     return 1
   fi
   rm -f "$git_err"
-  echo "$CHANGED"
+  # v5.0.6 BUG-4 — cap the display. A 4-file directive over a multi-commit
+  # range can legitimately touch 40+ files (templates/, static/, migrations)
+  # and the uncapped dump buried the genuinely useful section below
+  # ("Mentioned but NOT changed"). Full list still feeds the miss-check —
+  # only the DISPLAY is capped.
+  CHANGED_COUNT=$(echo "$CHANGED" | grep -c '[^[:space:]]' || true)
+  DISPLAY_CAP=20
+  if [ "$CHANGED_COUNT" -gt "$DISPLAY_CAP" ]; then
+    echo "$CHANGED" | head -"$DISPLAY_CAP"
+    echo "  … ($((CHANGED_COUNT - DISPLAY_CAP)) more — full list feeds the miss-check below)"
+  else
+    echo "$CHANGED"
+  fi
   echo
 
   # 5. Files in directive but not changed — track misses for the exit code.
