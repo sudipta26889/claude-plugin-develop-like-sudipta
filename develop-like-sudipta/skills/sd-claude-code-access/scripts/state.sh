@@ -47,8 +47,14 @@ JSON='{"ts":"'"$TS"'","event":"'"$EVT"'"'
 for arg in "$@"; do
   k="${arg%%=*}"
   v="${arg#*=}"
-  # Escape double quotes in value
-  v_escaped=$(printf '%s' "$v" | sed 's/"/\\"/g')
+  # v5.0.7 H2 — proper JSON string escaping. The old sed escaped `"` ONLY;
+  # any value containing a backslash (regex text, danger patterns, Windows
+  # paths — exactly what buffer snippets carry) produced invalid JSON like
+  # `"\b"` mid-string and corrupted the JSONL line. state_salvage.sh existed
+  # largely to clean up after this. Order matters: backslash FIRST, then
+  # quote; control chars stripped (they can't appear in argv normally, but
+  # captured buffer text can smuggle \r / \t through).
+  v_escaped=$(printf '%s' "$v" | tr -d '\000-\010\013\014\016-\037' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/\\t/g' -e $'s/\r/\\\\r/g')
   JSON="$JSON,\"$k\":\"$v_escaped\""
 done
 JSON="$JSON}"

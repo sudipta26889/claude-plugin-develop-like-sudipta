@@ -18,6 +18,11 @@ DEST="${CCBRIDGE_DIR:-$HOME/.cache/ccbridge}"
 STUCK_SECONDS="${1:-600}"
 POLL_SECONDS="${2:-30}"
 LOG="$DEST/nudge.log"
+# v5.0.7 M2 — same BUG-2 class as watchdog.sh (fixed there in v5.0.1):
+# without an INT/TERM trap the while-true loop ignored SIGTERM, forcing
+# every wrapper to SIGKILL. Conventional rc 143 (128+15).
+on_signal() { exit 143; }
+trap on_signal INT TERM
 SKIP_PATTERNS="$DEST/skip_nudge_patterns.txt"
 SKIP_EXTRA=""
 if [ -n "${WORKSPACE:-}" ]; then
