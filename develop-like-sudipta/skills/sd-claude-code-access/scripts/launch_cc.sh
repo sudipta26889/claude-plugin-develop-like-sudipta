@@ -211,23 +211,23 @@ fi
 
 case "$TERMINAL_APP" in
   Terminal|Terminal.app)
-    if [ -n "$ANOTHER_CC" ]; then
-      # New window: `do script` without `in window …` creates a new window on
-      # Terminal.app by default (verified macOS 14+). Adding `activate` brings
-      # the new window forward so the watchdog/send.sh target it correctly.
-      osascript <<EOF
+    # v5.0.7 H3 — capture the window id of the tab we spawn and persist it to
+    # $DEST/target_window_id. read.sh targets it directly; keys.sh/send.sh
+    # re-front it before typing. Fixes the front-window russian roulette:
+    # with two CC windows (v4.6-H1 opens a NEW window when a second CC runs),
+    # whichever window the user last clicked used to receive all keystrokes.
+    # `do script` returns a tab reference like "tab 1 of window id 17989".
+    TAB_REF=$(osascript <<EOF
 tell application "Terminal"
   activate
   do script "$SHELL_CMD"
 end tell
 EOF
-    else
-      osascript <<EOF
-tell application "Terminal"
-  activate
-  do script "$SHELL_CMD"
-end tell
-EOF
+)
+    WIN_ID=$(printf '%s' "$TAB_REF" | sed -nE 's/.*window id ([0-9]+).*/\1/p')
+    if [ -n "$WIN_ID" ]; then
+      printf '%s' "$WIN_ID" > "${CCBRIDGE_DIR:-$HOME/.cache/ccbridge}/target_window_id"
+      echo "[launch_cc] target window id: $WIN_ID (persisted for read/keys/send)" >&2
     fi
     ;;
   iTerm2|iTerm)

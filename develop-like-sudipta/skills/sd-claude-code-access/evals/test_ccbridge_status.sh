@@ -30,6 +30,11 @@ EXPECTED_SCRIPTS=(
   install_precommit.sh escalate.sh
   register_project.sh learning.sh launch_cc.sh
   aggregate_learnings.sh distill_learnings.sh ccbridge_status.sh
+  dispatch_signature.sh propose_fix_pr.sh sync_learnings.sh
+)
+# v5.0.7 L4 — data files the status check now verifies.
+EXPECTED_DATA=(
+  danger_patterns.txt skip_nudge_patterns.txt
 )
 
 # Synthesize a HOME so the script's PLUGIN_HINT-fallback search doesn't
@@ -47,6 +52,9 @@ mkdir -p "$CC_GREEN/learnings" "$CC_GREEN/aggregated" "$CC_GREEN/distillation" "
 # presence-check is `[ -f ]`, not exec/parse.
 for s in "${EXPECTED_SCRIPTS[@]}"; do
   : > "$CC_GREEN/$s"
+done
+for d in "${EXPECTED_DATA[@]}"; do
+  : > "$CC_GREEN/$d"
 done
 echo '{"version":1,"projects":[]}' > "$CC_GREEN/projects.json"
 

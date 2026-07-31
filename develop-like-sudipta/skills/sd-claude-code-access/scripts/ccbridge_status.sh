@@ -32,6 +32,14 @@ EXPECTED_SCRIPTS=(
   install_precommit.sh escalate.sh
   register_project.sh learning.sh launch_cc.sh
   aggregate_learnings.sh distill_learnings.sh ccbridge_status.sh
+  dispatch_signature.sh propose_fix_pr.sh sync_learnings.sh
+)
+
+# v5.0.7 L4 — non-executable data files the bridge needs. skip_nudge_patterns
+# (v5.0.5 FAILURE 10) was invisible to the health check: a green verdict on an
+# install where nudge suppression silently didn't work.
+EXPECTED_DATA=(
+  danger_patterns.txt skip_nudge_patterns.txt
 )
 
 PROBLEMS=0
@@ -91,6 +99,20 @@ print_bridge() {
   echo "  scripts: $present / ${#EXPECTED_SCRIPTS[@]} present"
   if [ ${#missing[@]} -gt 0 ]; then
     echo "  MISSING: ${missing[*]}"
+    PROBLEMS=$((PROBLEMS+1))
+  fi
+  # v5.0.7 L4 — data files.
+  local dpresent=0 dmissing=()
+  for f in "${EXPECTED_DATA[@]}"; do
+    if [ -f "$CCBRIDGE/$f" ]; then
+      dpresent=$((dpresent+1))
+    else
+      dmissing+=("$f")
+    fi
+  done
+  echo "  data files: $dpresent / ${#EXPECTED_DATA[@]} present"
+  if [ ${#dmissing[@]} -gt 0 ]; then
+    echo "  MISSING DATA: ${dmissing[*]}"
     PROBLEMS=$((PROBLEMS+1))
   fi
   local subdir_status=""

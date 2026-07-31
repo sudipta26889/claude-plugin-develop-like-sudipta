@@ -74,6 +74,23 @@ fi
 PRE_HASH=$("$DEST/read.sh" 2>/dev/null | shasum -a 256 | cut -c1-12 || echo "prehash_unavailable")
 
 printf '%s' "$MSG" | pbcopy
+
+# v5.0.7 H3 — re-front the persisted target window before pasting.
+# System Events keystrokes hit the FOCUSED window; with two Terminal
+# windows open (v4.6-H1 second-CC behavior), bare activate pasted into
+# whichever window the user last clicked.
+TARGET_WIN=""
+[ -f "$DEST/target_window_id" ] && TARGET_WIN=$(cat "$DEST/target_window_id" 2>/dev/null)
+case "$TARGET_WIN" in *[!0-9]*|'') TARGET_WIN="" ;; esac
+if [ -n "$TARGET_WIN" ] && { [ "$APP" = "Terminal" ] || [ "$APP" = "Terminal.app" ]; }; then
+  /usr/bin/osascript \
+    -e "tell application \"Terminal\"" \
+    -e "  try" \
+    -e "    set index of window id $TARGET_WIN to 1" \
+    -e "  end try" \
+    -e "end tell" 2>/dev/null || true
+fi
+
 /usr/bin/osascript <<APPLESCRIPT >/dev/null
 tell application "$APP" to activate
 delay 0.5

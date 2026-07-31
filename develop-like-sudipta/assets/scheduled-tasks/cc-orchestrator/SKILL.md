@@ -18,10 +18,22 @@ shell step goes through Desktop_Commander. Subscription Claude — DO NOT call
 
 ### Step 1 — quota saver: exit immediately if no active job
 
-Find any workspace with an active job:
+Find any workspace with an active job. v5.0.7 M4: scan the REGISTERED
+workspaces from `~/.cache/ccbridge/projects.json` (every workspace that ever
+used a plugin command self-registers there) — the old hardcoded
+`find ~/Workspace` silently never orchestrated projects cloned anywhere else.
+The find fallback covers pre-registration workspaces.
 
 ```
-bash -lc 'find ~/Workspace -maxdepth 4 -name "active-job.json" -path "*/.cc/*" 2>/dev/null | head -10'
+bash -lc 'python3 -c "
+import json,os
+try:
+  d=json.load(open(os.path.expanduser(\"~/.cache/ccbridge/projects.json\")))
+  for p in d.get(\"projects\",[]):
+    aj=os.path.join(p.get(\"path\",\"\"),\".cc\",\"active-job.json\")
+    if os.path.isfile(aj): print(aj)
+except Exception: pass
+" ; find ~/Workspace -maxdepth 4 -name "active-job.json" -path "*/.cc/*" 2>/dev/null' | sort -u | head -10
 ```
 
 If empty, write a one-line `[orchestrator] idle: no active jobs` log and exit.
@@ -62,9 +74,13 @@ For each `active-job.json` found:
         navigate to option 1 ("Yes" — the safe affirm for routine actions) →
         press return. Refuses (exit 2) on danger-pattern match.
         ```
-        bash ~/.cache/ccbridge/unblock_cc.sh
-        # exit 0 = unblocked, 2 = danger-refused, 3 = no prompt, 5 = parse fail
+        WORKSPACE=<workspace> bash ~/.cache/ccbridge/unblock_cc.sh
+        # exit 0 = unblocked, 2 = danger-refused, 3 = no prompt,
+        #      4 = empty buffer, 5 = parse fail, 6 = target below cursor
         ```
+        v5.0.7 M5: the `WORKSPACE=` prefix is REQUIRED — without it the
+        script skips its manager_decision state event and the learning
+        event (silent audit-trail loss).
         If unblock_cc.sh isn't present (pre-v5.0.2 plugin install) → fall back
         to the legacy path: read cursor manually, send the appropriate `up`/
         `down`/`return` sequence via `keys.sh`.

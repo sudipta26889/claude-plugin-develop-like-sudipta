@@ -33,10 +33,20 @@ Subscription Claude — DO NOT call `api.anthropic.com`.
 
 ### Step 1 — discover active jobs
 
-Sweep all active-job specs:
+Sweep all active-job specs. v5.0.7 M4: registered workspaces from
+`~/.cache/ccbridge/projects.json` first (the old hardcoded `find ~/Workspace`
+silently never watched projects cloned elsewhere), find as fallback:
 
 ```
-bash -lc 'find ~/Workspace -maxdepth 4 -name "active-job.json" -path "*/.cc/*" 2>/dev/null | head -20'
+bash -lc 'python3 -c "
+import json,os
+try:
+  d=json.load(open(os.path.expanduser(\"~/.cache/ccbridge/projects.json\")))
+  for p in d.get(\"projects\",[]):
+    aj=os.path.join(p.get(\"path\",\"\"),\".cc\",\"active-job.json\")
+    if os.path.isfile(aj): print(aj)
+except Exception: pass
+" ; find ~/Workspace -maxdepth 4 -name "active-job.json" -path "*/.cc/*" 2>/dev/null' | sort -u | head -20
 ```
 
 If empty: write a one-line `[keepalive] idle: no active jobs` log and exit.
