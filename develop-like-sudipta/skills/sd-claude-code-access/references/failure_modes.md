@@ -220,3 +220,19 @@ Trade-off: the user's old clipboard is restored even if they copied something du
 **Cause:** Test seeded a channel with a slug that doesn't match the test event payload.
 
 **Recovery:** standard pytest debug — read the test fixture, fix the seed slug. Not a manager-level concern; CC handles it.
+
+## Autocomplete ghost text mistaken for user-direct input (v5.0.6 BUG-3)
+
+**Symptoms:** the manager logs a `user_direct_input` event and starts "coordinating around" an instruction the user never gave. Recurring — every ghost suggestion is derived from recent context, so it always reads like a plausible instruction (`❯ now do phase C`, `❯ commit the lint fix`).
+
+**Cause:** terminal autocomplete plugins render a greyed suggestion at the `❯` prompt. `read.sh` / `read_history.sh` return a plain-text render with no styling — ghost text and typed text are byte-identical at that layer.
+
+**Detection rule (both required):**
+1. Same text present across **two consecutive polls ≥30s apart**, AND
+2. Evidence of submission — a new CC response block after it, or the text vanishing from the prompt between reads.
+
+Ghost suggestions persist unchanged and are never submitted.
+
+**Recovery if you already logged a phantom event:** log a follow-up `state.sh <ws> user_direct_input_retracted reason=ghost_text` and continue the plan. Do not unwind decisions already made unless they were based solely on the phantom instruction.
+
+**Rule of thumb:** acting on a phantom instruction is worse than missing a real one — the user will repeat a real instruction.

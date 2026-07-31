@@ -87,7 +87,12 @@ If you find yourself ABOUT to ask the user "want me to continue?", stop and inst
 
 1. Read the CC scrollback via `read_history.sh`.
 2. Compare against the `message_sent` events you logged to `<workspace>/.cc/state.json` — each event has the `frag` you used to verify your own paste.
-3. Any user prompt in CC that lacks a matching `frag` in `state.json` → user-direct input.
+3. **⚠️ Ghost-text caveat (v5.0.6 BUG-3):** text at the `❯` prompt may be a **terminal autocomplete ghost suggestion**, which renders identically to typed input in `read.sh`/`read_history.sh` output. The suggestion is derived from recent context, so it always reads like something the user might plausibly have typed (`❯ now do phase C`, `❯ commit the lint fix`). Do NOT declare `user_direct_input` on a single read. Require **both**:
+   1. the same text present across **two consecutive polls ≥30s apart**, AND
+   2. evidence it was actually **submitted** — a new CC response block appearing after it, or the text vanishing from the prompt line between reads.
+
+   Ghost suggestions persist unchanged and are never submitted. If in doubt, do nothing: acting on a phantom instruction is worse than missing a real one, which the user will repeat.
+4. Any user prompt that passes BOTH checks above and lacks a matching `frag` in `state.json` → user-direct input.
 4. When detected:
    - Log a `state.sh user_direct_input snippet="<first 80 chars>"` event for the audit trail.
    - **Don't repeat work CC may already be doing in response to that input.** Wait one extra poll cycle before sending your next directive.
