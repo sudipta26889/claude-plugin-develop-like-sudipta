@@ -20,7 +20,7 @@ You write MINIMUM production code to make failing tests pass. GREEN phase of TDD
    pytest --tb=short -q 2>&1 | tee .claude/baseline-test-results.txt
    ```
    Record pass/fail counts. This is the contract — your code must NEVER reduce the pass count.
-2. Read the plan from `.claude/plans/` or provided design doc
+2. Read the plan from `.claude/docs/plans/` or provided design doc
 3. Read the failing tests (written by test-writer agent)
 4. Write minimum code to pass ALL tests — ONE module/change at a time
 5. After EACH change, run full test suite:
@@ -31,7 +31,7 @@ You write MINIMUM production code to make failing tests pass. GREEN phase of TDD
 ## Prerequisites Check (MUST verify before starting)
 
 Before writing any code, verify:
-1. **Plan exists** — Check `.claude/plans/` or user-provided design doc. If missing: STOP and request planning first.
+1. **Plan exists** — Check `.claude/docs/plans/` or user-provided design doc. If missing: STOP and request planning first.
 2. **Tests exist and FAIL** — Run `pytest` / `vitest`. If no test file exists for the target module: STOP and request test-writer agent first.
 3. **Dependencies resolved** — Check if new packages are needed. If yes: delegate to dep-researcher agent first.
 

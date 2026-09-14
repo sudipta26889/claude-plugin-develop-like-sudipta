@@ -7,7 +7,7 @@ description: Create a development plan for a new feature or task. Brainstorm →
 Use superpowers:brainstorming first to explore the problem space, then superpowers:writing-plans
 to create a structured implementation plan.
 
-Write plan to `.claude/plans/<date>-<feature-name>.md` with:
+Write plan to `.claude/docs/plans/<date>-<feature-name>.md` with:
 - Goal and success criteria
 - Approach and trade-offs considered
 - Files to create/modify

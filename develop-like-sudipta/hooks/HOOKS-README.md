@@ -39,7 +39,7 @@ If no output is needed, the hook exits silently with code 0.
 | tdd-gate.sh | PreToolUse (Write/Edit) | Checks test file exists before production code edit |
 | post-edit-check.sh | PostToolUse (Write/Edit) | Scans for env vars, secrets, dead code, Dockerfile issues |
 | completion-gate.sh | Stop | Verifies tests pass, coverage meets threshold, no orphaned TODOs |
-| state-saver.sh | PreCompact | Saves session state to .claude/plans/ before context compaction |
+| state-saver.sh | PreCompact | Saves session state to .claude/state/autosaves/ before context compaction |
 
 ## Dependencies
 

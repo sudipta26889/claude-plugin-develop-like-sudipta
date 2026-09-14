@@ -86,7 +86,7 @@ v5.0 ships the continuous-loop architecture in three layers (backed by `docs/pla
 | `tdd-gate.sh` | PreToolUse (Write/Edit) | A test file exists for the module being edited. |
 | `post-edit-check.sh` | PostToolUse (Write/Edit) | Env vars, secrets, lint (ruff F401/F841), Dockerfile, `.env` sync. |
 | `completion-gate.sh` | Stop | Tests pass, coverage ≥80%, TODO count, baseline preserved. |
-| `state-saver.sh` | PreCompact | Auto-save plan/progress state to `.claude/plans/`. |
+| `state-saver.sh` | PreCompact | Auto-save session state to `.claude/state/autosaves/`. |
 | `check_bug_id.sh` | pre-commit (opt-in via `setup.sh`) | Blocks commits to `/fix/*` branches that lack a `Bug:` trailer + linked failing-test commit. |
 | `check_test_paired_with_src.sh` | pre-commit (opt-in via `setup.sh`) | Blocks commits where production code is added without a paired test file change. |
 | `setup.sh` | One-time install | Wires the hooks above into your Claude Code config and (opt-in) installs the git pre-commit hooks. |

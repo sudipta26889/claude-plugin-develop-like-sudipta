@@ -196,7 +196,7 @@ These tests are the safety net. They don't test correctness — they test preser
 ### Pillar 1 — Plan First
 **Plan Already Exists? Skip to Execution.** Read existing plan → verify actionable → execute.
 User saying "implement" = "execute this spec NOW." Use `/implement` command or `subagent-driven-development`.
-**No Plan?** Brainstorm → `.claude/plans/<n>.md` → verify with tools → execute.
+**No Plan?** Brainstorm → `.claude/docs/plans/<n>.md` → verify with tools → execute.
 Verdicts: ✅ Verified (evidence) | ⏳ Partial | ❌ Not started
 
 ### Pillar 2 — Code Quality → `code-reviewer` agent
@@ -270,14 +270,14 @@ Hooks fire deterministically — no LLM memory needed.
 | `tdd-gate.sh` | PreToolUse (Write/Edit) | Test file exists for module? |
 | `post-edit-check.sh` | PostToolUse (Write/Edit) | Env vars, secrets, lint, Dockerfile, .env sync |
 | `completion-gate.sh` | Stop | Tests pass, coverage ≥80%, TODO count |
-| `state-saver.sh` | PreCompact | Auto-save state to `.claude/plans/` |
+| `state-saver.sh` | PreCompact | Auto-save state to `.claude/state/autosaves/` |
 
 ---
 
 ## Context Window Management
 
 1. **Manual compact at 50%** — `/compact` proactively. Never trust auto-compaction.
-2. **State in files** — plans, progress, findings → `.claude/plans/`. Rebuilt from files.
+2. **State in files** — plans, progress, findings → `.claude/docs/plans/`. Rebuilt from files.
 3. **PreCompact hook** — auto-saves state before compaction.
 4. **Progressive disclosure** — load references only when pillar triggers.
 5. **Offload heavy tasks** — delegate to agents (they get their own context).
@@ -321,7 +321,7 @@ capture baseline test results. EVERY change verified against baseline. Rollback 
 ```
  0. BASELINE (Pres.)    → Run full test suite. Record pass/fail counts. This is the contract.
  1. BRAINSTORM (1)      → superpowers:brainstorming OR /plan command
- 2. WRITE PLAN (1)      → superpowers:writing-plans OR .claude/plans/<n>.md
+ 2. WRITE PLAN (1)      → superpowers:writing-plans OR .claude/docs/plans/<n>.md
     ─── SKIP 1-2 IF PLAN/DESIGN DOC ALREADY EXISTS ───
  3. RESEARCH DEPS (10)  → dep-researcher agent OR /research-deps command
  4. FAILING TEST (5)    → test-writer agent. RED phase. Hook verifies test exists.

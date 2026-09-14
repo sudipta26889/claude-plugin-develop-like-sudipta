@@ -9,7 +9,7 @@ A plan or design doc already exists. Execute it NOW.
 
 ## Procedure
 
-1. **READ** the provided plan/design document. If no file specified, check `.claude/plans/` for the latest.
+1. **READ** the provided plan/design document. If no file specified, check `.claude/docs/plans/` for the latest.
 2. **VERIFY** it's actionable — has goal, approach, file list? If yes → proceed.
    - If no plan found: STOP. Output "[IMPLEMENT] ❌ No plan found. Run /plan first."
    - If plan is outdated (>7 days old): warn but proceed if user confirms.

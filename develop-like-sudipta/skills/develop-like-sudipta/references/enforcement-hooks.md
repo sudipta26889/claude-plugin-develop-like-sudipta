@@ -62,7 +62,7 @@ Only runs inside a git repo with a detectable test setup.
 ### state-saver.sh (PreCompact hook)
 
 Before context compaction:
-- Creates `.claude/plans/auto-save-<timestamp>.md`
+- Creates `.claude/state/autosaves/auto-save-<timestamp>.md` (retains newest STATE_SAVER_RETAIN, default 10)
 - Saves: git status, changed files, current branch, active plan list
 - Includes recovery instructions
 
@@ -90,7 +90,7 @@ Stop ──→ completion-gate.sh
   ├── Check coverage ≥80%
   └── Grep for uncommitted TODOs
 
-PreCompact ──→ state-saver.sh → save state to .claude/plans/
+PreCompact ──→ state-saver.sh → save state to .claude/state/autosaves/
 ```
 
 ---
