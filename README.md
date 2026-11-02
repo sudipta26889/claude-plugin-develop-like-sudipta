@@ -40,4 +40,4 @@ To install the mods, see the [sd-claude-mods README](https://github.com/sudipta2
   claude plugin update develop-like-sudipta@claude-plugin-develop-like-sudipta
   ```
 
-Unverified: a release arriving through auto-update. The version rule and the manual update above were tested; the auto-update default comes from the Claude Code docs.
+With auto-update on, a version bump arrived in a test after a message was sent and about 11 minutes passed; a commit without a bump did not. The auto-update default comes from the Claude Code docs.
