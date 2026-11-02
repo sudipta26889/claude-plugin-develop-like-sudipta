@@ -33,7 +33,7 @@ If a hook/install script change appears to be silently swallowed, suspect `set -
 
 ## Validating changes (the closest thing to a test suite)
 
-There is no central `make test`. Validation is per-component:
+There is no central `make test`, but `.github/workflows/check.yml` runs `claude plugin validate`, `bash -n`, the Linux-compatible evals and a secret scan on every PR and on pushes to `main`. Beyond that, validation is per-component:
 
 - **Bridge scripts**: run them directly. `bash develop-like-sudipta/skills/sd-claude-code-access/scripts/diagnose.sh <workspace>` is the canonical health check. Many scripts have a no-op detect mode: `launch_cc.sh <workspace> --detect-only` exits 4 if no CC is running (safe to invoke anytime).
 - **Hook scripts**: pipe a JSON payload to stdin per the format in `develop-like-sudipta/hooks/HOOKS-README.md` and check stdout. Example: `echo '{"tool_name":"Write","file_path":"/tmp/x.py","path":"/tmp/x.py"}' | bash develop-like-sudipta/hooks/tdd-gate.sh`.
@@ -61,6 +61,14 @@ If you're modifying anything under `skills/sd-claude-code-access/scripts/`:
 ## Versioning
 
 Update three places per release: (1) `develop-like-sudipta/.claude-plugin/plugin.json` `version`, (2) the changelog narrative in that same `description` field, (3) the `## Versioning` section of `develop-like-sudipta/README.md`. The `marketplace.json` does NOT carry a version. Commits use Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, etc.) per the project's git history.
+
+### Releasing
+
+`main` is protected: no direct pushes, so `git push origin main` fails. Every change, releases included, goes through a PR.
+
+1. Branch from `main`, make the change and the version updates above, push the branch, and open a PR against `main`.
+2. Wait for the `check` job to pass, then get the PR merged.
+3. Tag the merged commit on `main`, not the branch commit (a squash or rebase merge changes the SHA): `git checkout main && git pull --ff-only && git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z`. Tags push directly.
 
 ## Platform / scope
 
