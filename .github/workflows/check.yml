@@ -1,0 +1,72 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the secret scan reads full history
+          persist-credentials: false
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.316
+
+      - name: Validate marketplace and plugin
+        run: |
+          claude plugin validate .
+          claude plugin validate ./develop-like-sudipta
+
+      - name: Syntax-check shell scripts
+        run: git ls-files '*.sh' | xargs -n1 bash -n
+
+      - name: Run evals
+        run: |
+          fail=0
+          for t in $(git ls-files '*/evals/test_*.sh'); do
+            case "$(basename "$t" .sh)" in
+              # macOS-only: BSD `date -v`/`date -j` in the test.
+              test_cc_coordinator_keepalive_stall_detection) echo "SKIP $t"; continue ;;
+              # macOS-only: BSD `script -q /dev/null <cmd>` syntax.
+              test_launch_cc_bare_name) echo "SKIP $t"; continue ;;
+              # macOS-only: `stat -f %m` succeeds on Linux with different meaning.
+              test_emit_ci_workflow) echo "SKIP $t"; continue ;;
+              # Assertions pass, but the EXIT trap runs `kill -KILL 0` (empty PID
+              # defaults to 0), so the test always exits 137.
+              test_danger_allow_list|test_danger_scoped_scan|test_nudge_skip_patterns|test_watchdog_cursor_auto_approve)
+                echo "SKIP $t"; continue ;;
+            esac
+            # timeout gives each test its own process group, so a stray
+            # `kill 0` in a test cannot take down this step.
+            if timeout -k 10 300 bash "$t" > /tmp/eval.log 2>&1 < /dev/null; then
+              echo "PASS $t"
+            else
+              rc=$?
+              echo "FAIL rc=$rc $t"
+              tail -40 /tmp/eval.log
+              fail=1
+            fi
+          done
+          exit "$fail"
+
+      - name: Scan history for secrets
+        shell: bash # -eo pipefail, so tee cannot hide gitleaks' exit code
+        run: |
+          curl -fsSL -o /tmp/gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tgz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          /tmp/gitleaks git --redact --no-banner . 2>&1 | tee /tmp/gitleaks.log
+          # gitleaks reports "no leaks found" even when it scanned nothing.
+          if grep -q ' 0 commits scanned' /tmp/gitleaks.log; then
+            echo "gitleaks scanned 0 commits"
+            exit 1
+          fi
