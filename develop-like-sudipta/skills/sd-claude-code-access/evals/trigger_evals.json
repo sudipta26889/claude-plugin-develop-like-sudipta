@@ -84,7 +84,7 @@
     "should_trigger": true
   },
   {
-    "query": "ssh into the m1-studio in my closet and drive the CC that's running there for the auth-microservice phase. SSH_TARGET is sudipta@studio.local",
+    "query": "ssh into the m1-studio in my closet and drive the CC that's running there for the auth-microservice phase. SSH_TARGET is user@studio.local",
     "should_trigger": true
   },
   {

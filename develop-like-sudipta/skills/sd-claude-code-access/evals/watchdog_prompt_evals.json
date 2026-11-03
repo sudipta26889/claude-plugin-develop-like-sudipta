@@ -101,7 +101,7 @@
     {
       "id": 16,
       "expected_action": "ignore",
-      "prompt_excerpt": "⏺ Reading /Users/sudipta/Workspace/personal/ProDevs-News/src/db.py\n  ⎿ 720 lines\n\n✻ Analyzing... (8s · ↑ 4.2k tokens)",
+      "prompt_excerpt": "⏺ Reading /Users/you/Workspace/personal/ProDevs-News/src/db.py\n  ⎿ 720 lines\n\n✻ Analyzing... (8s · ↑ 4.2k tokens)",
       "rationale": "Pure progress output. No prompt visible. Watchdog must not press Enter."
     },
     {

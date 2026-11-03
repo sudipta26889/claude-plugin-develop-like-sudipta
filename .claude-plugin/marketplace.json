@@ -3,8 +3,7 @@
   "name": "claude-plugin-develop-like-sudipta",
   "description": "Battle-tested 11-pillar development discipline with agents, hooks, commands, and red-team security auditing",
   "owner": {
-    "name": "Sudipta Dhara",
-    "email": "sudipta26889@gmail.com"
+    "name": "Sudipta Dhara"
   },
   "plugins": [
     {

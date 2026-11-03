@@ -2,7 +2,7 @@
 # check_no_hardcoded_paths.sh — pre-commit hook that fails the commit if any
 # staged file under the plugin tree contains a /Users/<name>/ hardcoded path.
 #
-# Why: v4.3.3 shipped scheduled-task SKILLs with `/Users/sudipta/Workspace/...`
+# Why: v4.3.3 shipped scheduled-task SKILLs with `/Users/you/Workspace/...`
 # baked in — the cron-triggered tasks would have silently failed on every
 # other machine. This catches the regression at commit time.
 #
@@ -30,7 +30,7 @@ SHIP_DIRS=(
 # - test fixtures
 # - plugin.json: long-form `description` is an accreting changelog that
 #   QUOTES historical paths (the v4.3.3 entry literally references the
-#   `/Users/sudipta/Workspace/...` bug it FIXED). Nothing in plugin.json
+#   `/Users/you/Workspace/...` bug it FIXED). Nothing in plugin.json
 #   is interpreted as a path-to-execute by Claude Code; the field is pure
 #   narrative read into the model's routing context.
 EXEMPT_PATHS=(
@@ -81,7 +81,7 @@ $PROBLEMS file(s) contain '/Users/<name>/' hardcodes. These will
 break the plugin on any other machine.
 
 Fix:
-  - Use \$HOME or ~/  (e.g. ~/Workspace/... instead of /Users/sudipta/Workspace/...)
+  - Use \$HOME or ~/  (e.g. ~/Workspace/... instead of /Users/you/Workspace/...)
   - Use \${CLAUDE_PLUGIN_ROOT} for plugin-relative refs
   - Use \${CCBRIDGE_HOME:-\$HOME/.cache/ccbridge} for bridge refs
 
