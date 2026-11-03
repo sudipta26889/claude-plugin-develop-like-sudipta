@@ -40,7 +40,7 @@ cp "$REAL_HOOK" develop-like-sudipta/hooks/scripts/check_no_hardcoded_paths.sh
 # fresh test_helper_TEMP.sh is neither).
 cat > develop-like-sudipta/hooks/scripts/test_helper_TEMP.sh <<'BAD'
 #!/usr/bin/env bash
-echo "/Users/sudipta/Workspace/something"
+echo "/Users/you/Workspace/something"
 BAD
 
 git add develop-like-sudipta/hooks/scripts/test_helper_TEMP.sh
@@ -75,7 +75,7 @@ esac
 rm -f develop-like-sudipta/hooks/scripts/test_helper_TEMP.sh
 git reset -q HEAD -- . 2>/dev/null || git reset -q 2>/dev/null || true
 # Append a hardcoded path inside the exempt file (the hook itself).
-echo 'echo "/Users/sudipta/Workspace/exempt-example"' >> develop-like-sudipta/hooks/scripts/check_no_hardcoded_paths.sh
+echo 'echo "/Users/you/Workspace/exempt-example"' >> develop-like-sudipta/hooks/scripts/check_no_hardcoded_paths.sh
 git add develop-like-sudipta/hooks/scripts/check_no_hardcoded_paths.sh
 rc=0; bash develop-like-sudipta/hooks/scripts/check_no_hardcoded_paths.sh >/dev/null 2>&1 || rc=$?
 [ "$rc" -eq 0 ] || {
