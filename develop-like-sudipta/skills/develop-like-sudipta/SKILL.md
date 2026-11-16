@@ -269,7 +269,7 @@ Hooks fire deterministically — no LLM memory needed.
 |---|---|---|
 | `tdd-gate.sh` | PreToolUse (Write/Edit) | Test file exists for module? |
 | `post-edit-check.sh` | PostToolUse (Write/Edit) | Env vars, secrets, lint, Dockerfile, .env sync |
-| `completion-gate.sh` | Stop | Tests pass, coverage ≥80%, TODO count |
+| `completion-gate.sh` | Stop | TODO count; tests and coverage ≥80% only with `COMPLETION_GATE_RUN_TESTS=1` |
 | `state-saver.sh` | PreCompact | Auto-save state to `.claude/state/autosaves/` |
 
 ---

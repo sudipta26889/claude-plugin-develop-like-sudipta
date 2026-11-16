@@ -85,7 +85,7 @@ v5.0 ships the continuous-loop architecture in three layers (backed by `docs/pla
 |---|---|---|
 | `tdd-gate.sh` | PreToolUse (Write/Edit) | A test file exists for the module being edited. |
 | `post-edit-check.sh` | PostToolUse (Write/Edit) | Env vars, secrets, lint (ruff F401/F841), Dockerfile, `.env` sync. |
-| `completion-gate.sh` | Stop | Tests pass, coverage ≥80%, TODO count, baseline preserved. |
+| `completion-gate.sh` | Stop | TODO count; tests and coverage ≥80% only with `COMPLETION_GATE_RUN_TESTS=1`. |
 | `state-saver.sh` | PreCompact | Auto-save session state to `.claude/state/autosaves/`. |
 | `check_bug_id.sh` | pre-commit (opt-in via `setup.sh`) | Blocks commits to `/fix/*` branches that lack a `Bug:` trailer + linked failing-test commit. |
 | `check_test_paired_with_src.sh` | pre-commit (opt-in via `setup.sh`) | Blocks commits where production code is added without a paired test file change. |
@@ -193,6 +193,7 @@ The plugin layers three things on top of Claude Code: (a) skills that load progr
 
 Newest first. One line per release, sourced from the accreting changelog in `develop-like-sudipta/.claude-plugin/plugin.json` `description`.
 
+v5.0.10 (Nov 2026): completion-gate Stop hook no longer runs test suites after every reply; opt in with `COMPLETION_GATE_RUN_TESTS=1`, exit-code judged, 120 s timeout.
 v5.0.1 (May 2026): BUG-2 — watchdog's `trap … TERM` handler now exits the poll loop cleanly on SIGTERM/SIGINT (silently re-entered the loop before).
 v5.0.0 (May 2026): Continuous-loop architecture — L1 `--auto`, L2 `cc-orchestrator` (every minute), L3 `cc-coordinator-keepalive` (every 5 min) + cross-machine learnings sync via `sync_learnings.sh` + `ccbridge-sync-learnings` (6h). Safety-net-only watchdog default, Modes A/B/C, six bundled scheduled tasks.
 v4.8.0 (May 2026): F-AUTOPR — `ccbridge-propose-fix-pr` scheduled task (Mondays 09:00) routes cross-project signatures through a dispatch table, drives bug-driven TDD on a plugin clone, opens a draft PR. Capped at 3/week.
