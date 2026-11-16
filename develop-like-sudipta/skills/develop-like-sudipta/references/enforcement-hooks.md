@@ -53,11 +53,11 @@ After any file edit, runs a 5-check pipeline:
 ### completion-gate.sh (Stop hook)
 
 Before agent finishes responding:
-1. **Test Suite:** Runs `pytest` (Python) or `npm test` (Node). FAILED → injects warning.
-2. **Coverage:** `coverage report --fail-under=80`. Below 80% → injects percentage.
-3. **TODO Count:** Greps changed files (`git diff --name-only HEAD`) for TODOs. Reports count.
+1. **TODO Count (always):** Greps changed files (`git diff --name-only HEAD`) for TODOs. Reports count.
+2. **Test Suite (opt-in):** only when `COMPLETION_GATE_RUN_TESTS=1`. Runs `pytest -x` or `npm test` (`--maxWorkers=3` for jest/vitest). Non-zero exit → injects warning.
+3. **Coverage (opt-in):** same switch. `coverage report --fail-under=80`; non-zero exit → injects percentage.
 
-Only runs inside a git repo with a detectable test setup.
+Test suites are the verify step of the workflow, not a per-reply hook, so they are off by default. `hooks.json` sets `"timeout": 120`. Only runs inside a git repo.
 
 ### state-saver.sh (PreCompact hook)
 
@@ -86,9 +86,9 @@ PostToolUse (Write/Edit) ──→ Pipeline on edited file:
   └── env-example-sync     → Pillar 3 all-surface reminder
 
 Stop ──→ completion-gate.sh
-  ├── Run test suite (pytest/npm test)
-  ├── Check coverage ≥80%
-  └── Grep for uncommitted TODOs
+  ├── Grep for uncommitted TODOs
+  ├── (opt-in) Run test suite (pytest/npm test)
+  └── (opt-in) Check coverage ≥80%
 
 PreCompact ──→ state-saver.sh → save state to .claude/state/autosaves/
 ```

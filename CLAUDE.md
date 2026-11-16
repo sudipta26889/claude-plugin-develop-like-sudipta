@@ -74,4 +74,4 @@ Update three places per release: (1) `develop-like-sudipta/.claude-plugin/plugin
 
 - macOS-only for the CC-driving features (`/cc-drive`, watchdog, browser-test). They depend on `osascript`, Terminal.app/iTerm2, and Desktop_Commander or computer-use MCPs.
 - The other pillars (planning, code review, security, dep research, hooks) are platform-agnostic.
-- `python3` and `git` are required for hook scripts to work. `ruff`, `pytest`, `coverage` are optional but unlock the post-edit / completion-gate checks.
+- `python3` and `git` are required for hook scripts to work. `ruff`, `pytest`, `coverage` are optional; ruff unlocks the post-edit check, pytest/coverage are used by completion-gate only when `COMPLETION_GATE_RUN_TESTS=1` (off by default so the Stop hook never runs a full suite after every reply).
